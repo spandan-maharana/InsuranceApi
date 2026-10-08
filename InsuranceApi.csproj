@@ -16,4 +16,10 @@
     </PackageReference>
   </ItemGroup>
 
+	<ItemGroup>
+		<Compile Remove="InsuranceApi.Tests\**" />
+		<EmbeddedResource Remove="InsuranceApi.Tests\**" />
+		<None Remove="InsuranceApi.Tests\**" />
+	</ItemGroup>
+
 </Project>

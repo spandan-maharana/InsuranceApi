@@ -1,12 +1,15 @@
-﻿using InsuranceApi.Dtos;
+﻿using Microsoft.AspNetCore.Authorization;
+using InsuranceApi.Dtos;
 using InsuranceApi.Models;
 using InsuranceApi.Services;
 using Microsoft.AspNetCore.Mvc;
+
 
 namespace InsuranceApi.Controllers;
 
 [ApiController] //Invoked the ApiController attribute to enable automatic model validation and other features for the controller.
 [Route("api/[controller]")] //Defines the route for the controller, where [controller] is replaced with the name of the controller (in this case, "customers") [/api/customers].
+[Authorize] //Requires authentication for all actions in the controller.
 public class CustomersController : ControllerBase
 {
     private readonly ICustomerService _service;
@@ -53,6 +56,7 @@ public class CustomersController : ControllerBase
         return Ok(updated);
     }
 
+    [Authorize(Roles = "SuperUser")] //Restricts access to this endpoint to users with the "SuperUser" role. Only authenticated users with this role can invoke the Delete method.
     [HttpDelete("{id}")] //Defines an HTTP DELETE endpoint for deleting a customer by ID. When a DELETE request is made to /api/customers/{id}, this method will be invoked, where {id} is a placeholder for the customer ID.
     public async Task<IActionResult> Delete(int id)
     {

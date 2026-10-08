@@ -1,4 +1,4 @@
-@host = http://localhost:5238
+@host = https://localhost:7073
 @id = 5
 
 ### 1. Create a customer (expect 201)
@@ -66,3 +66,51 @@ GET {{host}}/api/customers/999
 
 ### 9. Delete (expect 204), do this LAST
 DELETE {{host}}/api/customers/{{id}}
+
+### 10. No token (expect 401)
+GET {{host}}/api/customers
+
+### 11. Wrong password (expect 401)
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "username": "superuser", "password": "wrong" }
+
+### 12. Login as agent (expect 200, returns a token)
+# @name agentLogin
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "username": "agent", "password": "Agent123!" }
+
+### 13. Agent creates a customer with the token (expect 201)
+# @name created
+POST {{host}}/api/customers
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoiYWdlbnQiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBZ2VudCIsImV4cCI6MTc5MTUwMTE0NiwiaXNzIjoiSW5zdXJhbmNlQXBpIiwiYXVkIjoiSW5zdXJhbmNlQXBpVXNlcnMifQ.-rwZvj0uMGU1u7yzO3ulrAvLNJ62-YbmXwV9Jc_Jcsg
+
+{
+  "firstName": "Maya",
+  "lastName": "Patel",
+  "email": "maya@test.com",
+  "phoneNumber": "603-555-0111"
+}
+
+### 14. Agent reads customers (expect 200)
+GET {{host}}/api/customers
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 15. Agent tries to delete (expect 403)
+DELETE {{host}}/api/customers/{{created.response.body.$.id}}
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 16. Login as SuperUser (expect 200, role says SuperUser)
+# @name superLogin
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "username": "superuser", "password": "User123!" }
+
+### 17. SuperUser deletes (expect 204)
+DELETE {{host}}/api/customers/{{created.response.body.$.id}}
+Authorization: Bearer {{superLogin.response.body.$.token}}

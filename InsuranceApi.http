@@ -1,0 +1,68 @@
+@host = http://localhost:5238
+@id = 5
+
+### 1. Create a customer (expect 201)
+POST {{host}}/api/customers
+Content-Type: application/json
+
+{
+  "firstName": "Ana",
+  "lastName": "Smith",
+  "email": "ana@test.com",
+  "phoneNumber": "603-555-0101"
+}
+
+### 2. Get all customers (expect 200)
+GET {{host}}/api/customers
+
+### 3. Get one customer (expect 200)
+GET {{host}}/api/customers/{{id}}
+
+### 4. Update a customer (expect 200)
+PUT {{host}}/api/customers/{{id}}
+Content-Type: application/json
+
+{
+  "firstName": "Ana",
+  "lastName": "Johnson",
+  "email": "ana@test.com",
+  "phoneNumber": "603-555-0101"
+}
+
+### 5. Bad email (expect 400)
+POST {{host}}/api/customers
+Content-Type: application/json
+
+{
+  "firstName": "Bob",
+  "lastName": "Lee",
+  "email": "not-an-email",
+  "phoneNumber": "603-555-0102"
+}
+
+### 6. Missing phone (expect 400)
+POST {{host}}/api/customers
+Content-Type: application/json
+
+{
+  "firstName": "Bob",
+  "lastName": "Lee",
+  "email": "bob@test.com"
+}
+
+### 7. Duplicate email (expect 409)
+POST {{host}}/api/customers
+Content-Type: application/json
+
+{
+  "firstName": "Ana",
+  "lastName": "Two",
+  "email": "ana@test.com",
+  "phoneNumber": "603-555-0103"
+}
+
+### 8. Not found (expect 404)
+GET {{host}}/api/customers/999
+
+### 9. Delete (expect 204), do this LAST
+DELETE {{host}}/api/customers/{{id}}

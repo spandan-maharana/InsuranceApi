@@ -24,6 +24,11 @@ public class ExceptionHandlingMiddleware
         {
             await _next(context); //We let the request pass through to the next middleware or controller.
         }
+        catch (BadRequestException ex) // Catching the BadRequestException and returning a 400 Bad Request status code with the error message.
+        {
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            await context.Response.WriteAsJsonAsync(new { error = ex.Message });
+        }
         catch (ConflictException ex) // Catching the ConflictException and returning a 409 Conflict status code with the error message.
         {
             context.Response.StatusCode = StatusCodes.Status409Conflict;

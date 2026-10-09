@@ -87,7 +87,7 @@ Content-Type: application/json
 # @name created
 POST {{host}}/api/customers
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoiYWdlbnQiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBZ2VudCIsImV4cCI6MTc5MTUwMTE0NiwiaXNzIjoiSW5zdXJhbmNlQXBpIiwiYXVkIjoiSW5zdXJhbmNlQXBpVXNlcnMifQ.-rwZvj0uMGU1u7yzO3ulrAvLNJ62-YbmXwV9Jc_Jcsg
+Authorization: Bearer {{agentLogin.response.body.$.token}}
 
 {
   "firstName": "Maya",
@@ -114,3 +114,93 @@ Content-Type: application/json
 ### 17. SuperUser deletes (expect 204)
 DELETE {{host}}/api/customers/{{created.response.body.$.id}}
 Authorization: Bearer {{superLogin.response.body.$.token}}
+
+### 20. Create a customer to quote for (expect 201)
+# @name quoteCustomer
+POST {{host}}/api/customers
+Content-Type: application/json
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+{
+  "firstName": "Sam",
+  "lastName": "Rivera",
+  "email": "sam@test.com",
+  "phoneNumber": "603-555-0122"
+}
+
+### 21. Create a quote (expect 201, premium 1500.00)
+# @name newQuote
+POST {{host}}/api/quotes
+Content-Type: application/json
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+{
+  "customerId": {{quoteCustomer.response.body.$.id}},
+  "productType": "Home",
+  "riskLevel": "Medium",
+  "coverageAmount": 300000,
+  "requestedEffectiveDate": "2026-11-01"
+}
+
+### 22. Get that quote (expect 200)
+GET {{host}}/api/quotes/{{newQuote.response.body.$.id}}
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 23. Get all quotes (expect 200)
+GET {{host}}/api/quotes
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 24. No token (expect 401)
+GET {{host}}/api/quotes
+
+### 25. Date in the past (expect 400)
+POST {{host}}/api/quotes
+Content-Type: application/json
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+{
+  "customerId": {{quoteCustomer.response.body.$.id}},
+  "productType": "Auto",
+  "riskLevel": "Low",
+  "coverageAmount": 50000,
+  "requestedEffectiveDate": "2020-01-01"
+}
+
+### 26. Customer does not exist (expect 404)
+POST {{host}}/api/quotes
+Content-Type: application/json
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+{
+  "customerId": 99999,
+  "productType": "Auto",
+  "riskLevel": "Low",
+  "coverageAmount": 50000,
+  "requestedEffectiveDate": "2026-11-01"
+}
+
+### 27. Unknown product (expect 400)
+POST {{host}}/api/quotes
+Content-Type: application/json
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+{
+  "customerId": {{quoteCustomer.response.body.$.id}},
+  "productType": "Boat",
+  "riskLevel": "Low",
+  "coverageAmount": 50000,
+  "requestedEffectiveDate": "2026-11-01"
+}
+
+### 28. Coverage too small (expect 400)
+POST {{host}}/api/quotes
+Content-Type: application/json
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+{
+  "customerId": {{quoteCustomer.response.body.$.id}},
+  "productType": "Auto",
+  "riskLevel": "Low",
+  "coverageAmount": 5,
+  "requestedEffectiveDate": "2026-11-01"
+}

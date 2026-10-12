@@ -74,5 +74,10 @@ public class CustomersController : ControllerBase
  * 200 OK: The request was successful, and the response contains the requested data.
  * 201 Created: The request was successful, and a new resource was created as a result. This is typically used in response to POST requests.
  * 204 No Content: The request was successful, but there is no content to return. This is often used in response to DELETE requests.
+ * 400 Bad Request: The Input is Invalid, it is usually when we recieve an object that does not pass the email validation check, or if the date is in the past.
+ * 401 Unauthorized: The Authorized user login is not recieved to complete the action.
+ * 403 Forbidden: The User is logged in, but this particular user is not allowed to perform the action.
  * 404 Not Found: The requested resource could not be found. This is typically used when a resource with the specified ID does not exist.
+ * 409 Conflict: The record is duplicate/already present in the database. The records like duplicate email, phone number.
+ * 500 Server Crash: The request didn't pass, as the server crashed due to any unexpected errors.
  */

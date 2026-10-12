@@ -1,5 +1,5 @@
 ###############################################################
-# SETTINGS: the only lines you ever need to change
+# SETTINGS
 ###############################################################
 @host = https://localhost:7073
 
@@ -8,23 +8,23 @@
 @mayaEmail = maya1@test.com
 @samEmail = sam1@test.com
 
-# Quote start date. Must be in the future, so push it out if it ever becomes the past
+# Quote start date (Must be in the future)
 @effectiveDate = 2027-01-01
 
 
 ###############################################################
-# STEP A: LOGIN FIRST. Everything below needs these two tokens.
-# Tokens last 1 hour. If you get 401 later, send these two again.
+# LOGIN FIRST. Everything below needs these two tokens.
+# Tokens last 1 hour.
 ###############################################################
 
-### 12. Login as agent (expect 200, returns a token)
+###  Login as agent (expect 200, returns a token)
 # @name agentLogin
 POST {{host}}/api/auth/login
 Content-Type: application/json
 
 { "username": "agent", "password": "Agent123!" }
 
-### 16. Login as SuperUser (expect 200, role says SuperUser)
+### Login as SuperUser (expect 200, role says SuperUser)
 # @name superLogin
 POST {{host}}/api/auth/login
 Content-Type: application/json
@@ -33,7 +33,7 @@ Content-Type: application/json
 
 
 ###############################################################
-# STEP B: CUSTOMERS (run 1 to 9 from top to bottom)
+# CUSTOMERS
 ###############################################################
 
 ### 1. Create a customer (expect 201)
@@ -114,7 +114,7 @@ Authorization: Bearer {{superLogin.response.body.$.token}}
 
 
 ###############################################################
-# STEP C: LOGIN AND ROLE TESTS
+# LOGIN AND ROLE TESTS
 ###############################################################
 
 ### 10. No token (expect 401)
@@ -151,9 +151,25 @@ Authorization: Bearer {{agentLogin.response.body.$.token}}
 DELETE {{host}}/api/customers/{{created.response.body.$.id}}
 Authorization: Bearer {{superLogin.response.body.$.token}}
 
+### 18. SuperUser creates a customer (expect 201, then 409 if sent again)
+POST {{host}}/api/customers
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "firstName": "Priya",
+  "lastName": "Nair",
+  "email": "priya1@test.com",
+  "phoneNumber": "603-555-0133"
+}
+
+### 19. SuperUser reads customers (expect 200)
+GET {{host}}/api/customers
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
 
 ###############################################################
-# STEP D: QUOTES
+# QUOTES
 ###############################################################
 
 ### 20. Create a customer to quote for (expect 201)
@@ -245,3 +261,4 @@ Authorization: Bearer {{agentLogin.response.body.$.token}}
   "coverageAmount": 5,
   "requestedEffectiveDate": "{{effectiveDate}}"
 }
+

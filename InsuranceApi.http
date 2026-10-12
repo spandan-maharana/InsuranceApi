@@ -1,37 +1,78 @@
+###############################################################
+# SETTINGS: the only lines you ever need to change
+###############################################################
 @host = https://localhost:7073
-@id = 5
+
+# If a request gives 409 (email already exists), change the number in these emails
+@anaEmail = ana1@test.com
+@mayaEmail = maya1@test.com
+@samEmail = sam1@test.com
+
+# Quote start date. Must be in the future, so push it out if it ever becomes the past
+@effectiveDate = 2027-01-01
+
+
+###############################################################
+# STEP A: LOGIN FIRST. Everything below needs these two tokens.
+# Tokens last 1 hour. If you get 401 later, send these two again.
+###############################################################
+
+### 12. Login as agent (expect 200, returns a token)
+# @name agentLogin
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "username": "agent", "password": "Agent123!" }
+
+### 16. Login as SuperUser (expect 200, role says SuperUser)
+# @name superLogin
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "username": "superuser", "password": "User123!" }
+
+
+###############################################################
+# STEP B: CUSTOMERS (run 1 to 9 from top to bottom)
+###############################################################
 
 ### 1. Create a customer (expect 201)
+# @name newCustomer
 POST {{host}}/api/customers
 Content-Type: application/json
+Authorization: Bearer {{agentLogin.response.body.$.token}}
 
 {
   "firstName": "Ana",
   "lastName": "Smith",
-  "email": "ana@test.com",
+  "email": "{{anaEmail}}",
   "phoneNumber": "603-555-0101"
 }
 
 ### 2. Get all customers (expect 200)
 GET {{host}}/api/customers
+Authorization: Bearer {{agentLogin.response.body.$.token}}
 
 ### 3. Get one customer (expect 200)
-GET {{host}}/api/customers/{{id}}
+GET {{host}}/api/customers/{{newCustomer.response.body.$.id}}
+Authorization: Bearer {{agentLogin.response.body.$.token}}
 
 ### 4. Update a customer (expect 200)
-PUT {{host}}/api/customers/{{id}}
+PUT {{host}}/api/customers/{{newCustomer.response.body.$.id}}
 Content-Type: application/json
+Authorization: Bearer {{agentLogin.response.body.$.token}}
 
 {
   "firstName": "Ana",
   "lastName": "Johnson",
-  "email": "ana@test.com",
+  "email": "{{anaEmail}}",
   "phoneNumber": "603-555-0101"
 }
 
 ### 5. Bad email (expect 400)
 POST {{host}}/api/customers
 Content-Type: application/json
+Authorization: Bearer {{agentLogin.response.body.$.token}}
 
 {
   "firstName": "Bob",
@@ -43,6 +84,7 @@ Content-Type: application/json
 ### 6. Missing phone (expect 400)
 POST {{host}}/api/customers
 Content-Type: application/json
+Authorization: Bearer {{agentLogin.response.body.$.token}}
 
 {
   "firstName": "Bob",
@@ -53,19 +95,27 @@ Content-Type: application/json
 ### 7. Duplicate email (expect 409)
 POST {{host}}/api/customers
 Content-Type: application/json
+Authorization: Bearer {{agentLogin.response.body.$.token}}
 
 {
   "firstName": "Ana",
   "lastName": "Two",
-  "email": "ana@test.com",
+  "email": "{{anaEmail}}",
   "phoneNumber": "603-555-0103"
 }
 
 ### 8. Not found (expect 404)
 GET {{host}}/api/customers/999
+Authorization: Bearer {{agentLogin.response.body.$.token}}
 
-### 9. Delete (expect 204), do this LAST
-DELETE {{host}}/api/customers/{{id}}
+### 9. Delete (expect 204). Needs the SuperUser token.
+DELETE {{host}}/api/customers/{{newCustomer.response.body.$.id}}
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+
+###############################################################
+# STEP C: LOGIN AND ROLE TESTS
+###############################################################
 
 ### 10. No token (expect 401)
 GET {{host}}/api/customers
@@ -76,13 +126,6 @@ Content-Type: application/json
 
 { "username": "superuser", "password": "wrong" }
 
-### 12. Login as agent (expect 200, returns a token)
-# @name agentLogin
-POST {{host}}/api/auth/login
-Content-Type: application/json
-
-{ "username": "agent", "password": "Agent123!" }
-
 ### 13. Agent creates a customer with the token (expect 201)
 # @name created
 POST {{host}}/api/customers
@@ -92,7 +135,7 @@ Authorization: Bearer {{agentLogin.response.body.$.token}}
 {
   "firstName": "Maya",
   "lastName": "Patel",
-  "email": "maya@test.com",
+  "email": "{{mayaEmail}}",
   "phoneNumber": "603-555-0111"
 }
 
@@ -104,16 +147,14 @@ Authorization: Bearer {{agentLogin.response.body.$.token}}
 DELETE {{host}}/api/customers/{{created.response.body.$.id}}
 Authorization: Bearer {{agentLogin.response.body.$.token}}
 
-### 16. Login as SuperUser (expect 200, role says SuperUser)
-# @name superLogin
-POST {{host}}/api/auth/login
-Content-Type: application/json
-
-{ "username": "superuser", "password": "User123!" }
-
 ### 17. SuperUser deletes (expect 204)
 DELETE {{host}}/api/customers/{{created.response.body.$.id}}
 Authorization: Bearer {{superLogin.response.body.$.token}}
+
+
+###############################################################
+# STEP D: QUOTES
+###############################################################
 
 ### 20. Create a customer to quote for (expect 201)
 # @name quoteCustomer
@@ -124,7 +165,7 @@ Authorization: Bearer {{agentLogin.response.body.$.token}}
 {
   "firstName": "Sam",
   "lastName": "Rivera",
-  "email": "sam@test.com",
+  "email": "{{samEmail}}",
   "phoneNumber": "603-555-0122"
 }
 
@@ -139,14 +180,14 @@ Authorization: Bearer {{agentLogin.response.body.$.token}}
   "productType": "Home",
   "riskLevel": "Medium",
   "coverageAmount": 300000,
-  "requestedEffectiveDate": "2026-11-01"
+  "requestedEffectiveDate": "{{effectiveDate}}"
 }
 
 ### 22. Get that quote (expect 200)
 GET {{host}}/api/quotes/{{newQuote.response.body.$.id}}
 Authorization: Bearer {{agentLogin.response.body.$.token}}
 
-### 23. Get all quotes (expect 200)
+### 23. Get all quotes (expect 200). If this gives 404 or 405, there is no such endpoint. Skip it.
 GET {{host}}/api/quotes
 Authorization: Bearer {{agentLogin.response.body.$.token}}
 
@@ -176,7 +217,7 @@ Authorization: Bearer {{agentLogin.response.body.$.token}}
   "productType": "Auto",
   "riskLevel": "Low",
   "coverageAmount": 50000,
-  "requestedEffectiveDate": "2026-11-01"
+  "requestedEffectiveDate": "{{effectiveDate}}"
 }
 
 ### 27. Unknown product (expect 400)
@@ -189,7 +230,7 @@ Authorization: Bearer {{agentLogin.response.body.$.token}}
   "productType": "Boat",
   "riskLevel": "Low",
   "coverageAmount": 50000,
-  "requestedEffectiveDate": "2026-11-01"
+  "requestedEffectiveDate": "{{effectiveDate}}"
 }
 
 ### 28. Coverage too small (expect 400)
@@ -202,5 +243,5 @@ Authorization: Bearer {{agentLogin.response.body.$.token}}
   "productType": "Auto",
   "riskLevel": "Low",
   "coverageAmount": 5,
-  "requestedEffectiveDate": "2026-11-01"
+  "requestedEffectiveDate": "{{effectiveDate}}"
 }

@@ -3,17 +3,12 @@
 ###############################################################
 @host = https://localhost:7073
 
-# If a request gives 409 (email already exists), change the number in these emails
-@anaEmail = ana1@test.com
-@mayaEmail = maya1@test.com
-@samEmail = sam1@test.com
-
-# Quote start date (Must be in the future)
-@effectiveDate = 2027-01-01
+# Quote start date: always one year from today, so it is never in the past
+@effectiveDate = {{$datetime "yyyy-MM-dd" 1 y}}
 
 
 ###############################################################
-# LOGIN FIRST. Everything below needs these two tokens.
+# LOGIN FIRST. Everything below needs these three tokens.
 # Tokens last 1 hour.
 ###############################################################
 
@@ -31,6 +26,30 @@ Content-Type: application/json
 
 { "username": "superuser", "password": "User123!" }
 
+### 29. Login as underwriter (expect 200, role says Underwriter)
+# @name underLogin
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "username": "underwriter", "password": "Underwriter123!" }
+
+
+###############################################################
+# PRODUCT CATALOGUE (public, no token needed)
+###############################################################
+
+### 62. All categories with their products (expect 200, 4 categories, 15 products in total)
+GET {{host}}/api/categories
+
+### 63. One product with its questions (expect 200, AUTO has 3 questions)
+GET {{host}}/api/products/AUTO
+
+### 64. Product that does not exist (expect 404)
+GET {{host}}/api/products/BOAT
+
+### 65. Another product, to see that every product has its own questions (expect 200, HOME)
+GET {{host}}/api/products/HOME
+
 
 ###############################################################
 # CUSTOMERS
@@ -45,7 +64,7 @@ Authorization: Bearer {{agentLogin.response.body.$.token}}
 {
   "firstName": "Ana",
   "lastName": "Smith",
-  "email": "{{anaEmail}}",
+  "email": "ana-{{$guid}}@test.com",
   "phoneNumber": "603-555-0101"
 }
 
@@ -65,7 +84,7 @@ Authorization: Bearer {{agentLogin.response.body.$.token}}
 {
   "firstName": "Ana",
   "lastName": "Johnson",
-  "email": "{{anaEmail}}",
+  "email": "{{newCustomer.response.body.$.email}}",
   "phoneNumber": "603-555-0101"
 }
 
@@ -100,7 +119,7 @@ Authorization: Bearer {{agentLogin.response.body.$.token}}
 {
   "firstName": "Ana",
   "lastName": "Two",
-  "email": "{{anaEmail}}",
+  "email": "{{newCustomer.response.body.$.email}}",
   "phoneNumber": "603-555-0103"
 }
 
@@ -135,7 +154,7 @@ Authorization: Bearer {{agentLogin.response.body.$.token}}
 {
   "firstName": "Maya",
   "lastName": "Patel",
-  "email": "{{mayaEmail}}",
+  "email": "maya-{{$guid}}@test.com",
   "phoneNumber": "603-555-0111"
 }
 
@@ -151,7 +170,7 @@ Authorization: Bearer {{agentLogin.response.body.$.token}}
 DELETE {{host}}/api/customers/{{created.response.body.$.id}}
 Authorization: Bearer {{superLogin.response.body.$.token}}
 
-### 18. SuperUser creates a customer (expect 201, then 409 if sent again)
+### 18. SuperUser creates a customer (expect 201)
 POST {{host}}/api/customers
 Content-Type: application/json
 Authorization: Bearer {{superLogin.response.body.$.token}}
@@ -159,7 +178,7 @@ Authorization: Bearer {{superLogin.response.body.$.token}}
 {
   "firstName": "Priya",
   "lastName": "Nair",
-  "email": "priya1@test.com",
+  "email": "priya-{{$guid}}@test.com",
   "phoneNumber": "603-555-0133"
 }
 
@@ -169,7 +188,7 @@ Authorization: Bearer {{superLogin.response.body.$.token}}
 
 
 ###############################################################
-# QUOTES
+# QUOTES (every quote now has a productCode and answers)
 ###############################################################
 
 ### 20. Create a customer to quote for (expect 201)
@@ -181,11 +200,11 @@ Authorization: Bearer {{agentLogin.response.body.$.token}}
 {
   "firstName": "Sam",
   "lastName": "Rivera",
-  "email": "{{samEmail}}",
+  "email": "sam-{{$guid}}@test.com",
   "phoneNumber": "603-555-0122"
 }
 
-### 21. Create a quote (expect 201, premium 1500.00)
+### 21. Create an Auto quote (expect 201, status Draft, premium null, answers saved)
 # @name newQuote
 POST {{host}}/api/quotes
 Content-Type: application/json
@@ -193,17 +212,21 @@ Authorization: Bearer {{agentLogin.response.body.$.token}}
 
 {
   "customerId": {{quoteCustomer.response.body.$.id}},
-  "productType": "Home",
-  "riskLevel": "Medium",
-  "coverageAmount": 300000,
-  "requestedEffectiveDate": "{{effectiveDate}}"
+  "productCode": "AUTO",
+  "coverageAmount": 80000,
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": {
+    "driverAge": 40,
+    "accidentsLast3Years": 0,
+    "vehicleType": "Sedan"
+  }
 }
 
 ### 22. Get that quote (expect 200)
 GET {{host}}/api/quotes/{{newQuote.response.body.$.id}}
 Authorization: Bearer {{agentLogin.response.body.$.token}}
 
-### 23. Get all quotes (expect 200). If this gives 404 or 405, there is no such endpoint. Skip it.
+### 23. Get all quotes (expect 200)
 GET {{host}}/api/quotes
 Authorization: Bearer {{agentLogin.response.body.$.token}}
 
@@ -217,10 +240,10 @@ Authorization: Bearer {{agentLogin.response.body.$.token}}
 
 {
   "customerId": {{quoteCustomer.response.body.$.id}},
-  "productType": "Auto",
-  "riskLevel": "Low",
+  "productCode": "AUTO",
   "coverageAmount": 50000,
-  "requestedEffectiveDate": "2020-01-01"
+  "requestedEffectiveDate": "2020-01-01",
+  "answers": { "driverAge": 40, "accidentsLast3Years": 0, "vehicleType": "Sedan" }
 }
 
 ### 26. Customer does not exist (expect 404)
@@ -230,35 +253,1362 @@ Authorization: Bearer {{agentLogin.response.body.$.token}}
 
 {
   "customerId": 99999,
-  "productType": "Auto",
-  "riskLevel": "Low",
+  "productCode": "AUTO",
   "coverageAmount": 50000,
-  "requestedEffectiveDate": "{{effectiveDate}}"
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": { "driverAge": 40, "accidentsLast3Years": 0, "vehicleType": "Sedan" }
 }
 
-### 27. Unknown product (expect 400)
+### 27. Unknown product (expect 400, "Unknown or unavailable product.")
 POST {{host}}/api/quotes
 Content-Type: application/json
 Authorization: Bearer {{agentLogin.response.body.$.token}}
 
 {
   "customerId": {{quoteCustomer.response.body.$.id}},
-  "productType": "Boat",
-  "riskLevel": "Low",
+  "productCode": "BOAT",
   "coverageAmount": 50000,
-  "requestedEffectiveDate": "{{effectiveDate}}"
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": {}
 }
 
-### 28. Coverage too small (expect 400)
+### 28. Coverage too small for Auto (expect 400, must be between 10,000 and 500,000)
 POST {{host}}/api/quotes
 Content-Type: application/json
 Authorization: Bearer {{agentLogin.response.body.$.token}}
 
 {
   "customerId": {{quoteCustomer.response.body.$.id}},
-  "productType": "Auto",
-  "riskLevel": "Low",
-  "coverageAmount": 5,
-  "requestedEffectiveDate": "{{effectiveDate}}"
+  "productCode": "AUTO",
+  "coverageAmount": 5000,
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": { "driverAge": 40, "accidentsLast3Years": 0, "vehicleType": "Sedan" }
 }
 
+### 66. Coverage too big for Auto (expect 400, must be between 10,000 and 500,000)
+POST {{host}}/api/quotes
+Content-Type: application/json
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+{
+  "customerId": {{quoteCustomer.response.body.$.id}},
+  "productCode": "AUTO",
+  "coverageAmount": 900000,
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": { "driverAge": 40, "accidentsLast3Years": 0, "vehicleType": "Sedan" }
+}
+
+### 67. A required answer is missing (expect 400, says the accidents answer is required)
+POST {{host}}/api/quotes
+Content-Type: application/json
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+{
+  "customerId": {{quoteCustomer.response.body.$.id}},
+  "productCode": "AUTO",
+  "coverageAmount": 50000,
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": { "driverAge": 40, "vehicleType": "Sedan" }
+}
+
+### 68. An answer that is not a question for Auto (expect 400)
+POST {{host}}/api/quotes
+Content-Type: application/json
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+{
+  "customerId": {{quoteCustomer.response.body.$.id}},
+  "productCode": "AUTO",
+  "coverageAmount": 50000,
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": { "driverAge": 40, "accidentsLast3Years": 0, "vehicleType": "Sedan", "roofType": "Tile" }
+}
+
+### 69. Driver age out of range (expect 400, must be between 16 and 100)
+POST {{host}}/api/quotes
+Content-Type: application/json
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+{
+  "customerId": {{quoteCustomer.response.body.$.id}},
+  "productCode": "AUTO",
+  "coverageAmount": 50000,
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": { "driverAge": 12, "accidentsLast3Years": 0, "vehicleType": "Sedan" }
+}
+
+### 70. Vehicle type is not in the list (expect 400, must be one of: Sedan, SUV, Truck, Sports car)
+POST {{host}}/api/quotes
+Content-Type: application/json
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+{
+  "customerId": {{quoteCustomer.response.body.$.id}},
+  "productCode": "AUTO",
+  "coverageAmount": 50000,
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": { "driverAge": 40, "accidentsLast3Years": 0, "vehicleType": "Tank" }
+}
+
+### 71. Age is not a number (expect 400, must be a number)
+POST {{host}}/api/quotes
+Content-Type: application/json
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+{
+  "customerId": {{quoteCustomer.response.body.$.id}},
+  "productCode": "AUTO",
+  "coverageAmount": 50000,
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": { "driverAge": "abc", "accidentsLast3Years": 0, "vehicleType": "Sedan" }
+}
+
+
+###############################################################
+# QUOTE LIFECYCLE (agent sells, underwriter approves)
+###############################################################
+
+### 30. Create a quote (expect 201, status Draft, premium null)
+# @name lifeQuote
+POST {{host}}/api/quotes
+Content-Type: application/json
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+{
+  "customerId": {{quoteCustomer.response.body.$.id}},
+  "productCode": "AUTO",
+  "coverageAmount": 80000,
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": { "driverAge": 40, "accidentsLast3Years": 0, "vehicleType": "Sedan" }
+}
+
+### 31. Underwriter binds a Draft (expect 409, wrong status)
+POST {{host}}/api/quotes/{{lifeQuote.response.body.$.id}}/bind
+Authorization: Bearer {{underLogin.response.body.$.token}}
+
+### 32. Agent accepts a Draft (expect 409, must be Quoted first)
+POST {{host}}/api/quotes/{{lifeQuote.response.body.$.id}}/accept
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 33. Agent gives the quote (expect 200, status Quoted, premium 1130.00, premiumBreakdown with steps, expiresAt set)
+POST {{host}}/api/quotes/{{lifeQuote.response.body.$.id}}/quote
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 34. Quote it again (expect 409, already Quoted)
+POST {{host}}/api/quotes/{{lifeQuote.response.body.$.id}}/quote
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 35. SuperUser tries to accept (expect 403, admin does not do insurance work)
+POST {{host}}/api/quotes/{{lifeQuote.response.body.$.id}}/accept
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+### 36. Agent accepts (expect 200, status Accepted)
+POST {{host}}/api/quotes/{{lifeQuote.response.body.$.id}}/accept
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 37. Agent tries to bind (expect 403, underwriter only)
+POST {{host}}/api/quotes/{{lifeQuote.response.body.$.id}}/bind
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 38. Underwriter issues too early (expect 409, must be Bound first)
+POST {{host}}/api/quotes/{{lifeQuote.response.body.$.id}}/issue
+Authorization: Bearer {{underLogin.response.body.$.token}}
+
+### 39. Underwriter binds (expect 200, status Bound)
+POST {{host}}/api/quotes/{{lifeQuote.response.body.$.id}}/bind
+Authorization: Bearer {{underLogin.response.body.$.token}}
+
+### 40. Underwriter issues (expect 200, status Issued, a policy is created)
+POST {{host}}/api/quotes/{{lifeQuote.response.body.$.id}}/issue
+Authorization: Bearer {{underLogin.response.body.$.token}}
+
+### 41. Discard an Issued quote (expect 409, too late)
+POST {{host}}/api/quotes/{{lifeQuote.response.body.$.id}}/discard
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 42. Quote that does not exist (expect 404)
+POST {{host}}/api/quotes/99999/accept
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 43. Rejection path: create a riskier Auto quote (expect 201, Draft)
+# @name rejectQuote
+POST {{host}}/api/quotes
+Content-Type: application/json
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+{
+  "customerId": {{quoteCustomer.response.body.$.id}},
+  "productCode": "AUTO",
+  "coverageAmount": 80000,
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": { "driverAge": 20, "accidentsLast3Years": 2, "vehicleType": "Sports car" }
+}
+
+### 44. Agent gives the quote (expect 200, Quoted, premium 4754.00)
+POST {{host}}/api/quotes/{{rejectQuote.response.body.$.id}}/quote
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 45. Agent accepts (expect 200, Accepted)
+POST {{host}}/api/quotes/{{rejectQuote.response.body.$.id}}/accept
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 46. Underwriter rejects with Discard (expect 200, status Discarded)
+POST {{host}}/api/quotes/{{rejectQuote.response.body.$.id}}/discard
+Authorization: Bearer {{underLogin.response.body.$.token}}
+
+### 47. Accept a Discarded quote (expect 409)
+POST {{host}}/api/quotes/{{rejectQuote.response.body.$.id}}/accept
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+
+###############################################################
+# POLICIES
+###############################################################
+
+### 48. Create a quote for the policy test (expect 201, Draft)
+# @name policyQuote
+POST {{host}}/api/quotes
+Content-Type: application/json
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+{
+  "customerId": {{quoteCustomer.response.body.$.id}},
+  "productCode": "AUTO",
+  "coverageAmount": 80000,
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": { "driverAge": 40, "accidentsLast3Years": 0, "vehicleType": "Sedan" }
+}
+
+### 49. Agent gives the quote (expect 200, Quoted)
+POST {{host}}/api/quotes/{{policyQuote.response.body.$.id}}/quote
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 50. Agent accepts (expect 200, Accepted)
+POST {{host}}/api/quotes/{{policyQuote.response.body.$.id}}/accept
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 51. Underwriter binds (expect 200, Bound)
+POST {{host}}/api/quotes/{{policyQuote.response.body.$.id}}/bind
+Authorization: Bearer {{underLogin.response.body.$.token}}
+
+### 52. Underwriter issues (expect 200, Issued, and a policy is created)
+POST {{host}}/api/quotes/{{policyQuote.response.body.$.id}}/issue
+Authorization: Bearer {{underLogin.response.body.$.token}}
+
+### 53. Get the policy created from that quote (expect 200, Issued, term 0, productCode AUTO, premium 1130.00)
+# @name policyByQuote
+GET {{host}}/api/policies/by-quote/{{policyQuote.response.body.$.id}}
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 53b. List all policies (expect 200)
+GET {{host}}/api/policies
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 54. Agent renews (expect 200, term 1, effective one year after the original)
+POST {{host}}/api/policies/{{policyByQuote.response.body.$.id}}/renew
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 55. Renew the same policy again (expect 409, already renewed)
+POST {{host}}/api/policies/{{policyByQuote.response.body.$.id}}/renew
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 56. Search by segment (expect 200, two policies: term 0 and term 1)
+GET {{host}}/api/policies?segment={{policyByQuote.response.body.$.segment}}
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 57. Underwriter tries to cancel (expect 403, agent only)
+POST {{host}}/api/policies/{{policyByQuote.response.body.$.id}}/cancel
+Authorization: Bearer {{underLogin.response.body.$.token}}
+
+### 58. Agent cancels the original policy (expect 200, Cancelled, cancelledAt set)
+POST {{host}}/api/policies/{{policyByQuote.response.body.$.id}}/cancel
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 59. Cancel it again (expect 409)
+POST {{host}}/api/policies/{{policyByQuote.response.body.$.id}}/cancel
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 60. Renew a cancelled policy (expect 409)
+POST {{host}}/api/policies/{{policyByQuote.response.body.$.id}}/renew
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 61. Policy that does not exist (expect 404)
+GET {{host}}/api/policies/99999
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+
+
+###############################################################
+# ADMIN: PRODUCT MANAGEMENT (SuperUser only)
+###############################################################
+
+### 72. SuperUser lists all products (expect 200, 15 or more products, with rates and fees shown)
+GET {{host}}/api/admin/products
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+### 73. Agent tries to list (expect 403)
+GET {{host}}/api/admin/products
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 74. No token (expect 401)
+GET {{host}}/api/admin/products
+
+### 75. SuperUser creates a product (expect 201, isActive true, questionCount 0)
+# @name newProduct
+POST {{host}}/api/admin/products
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "code": "TEST_{{$randomInt 100000 999999}}",
+  "categoryCode": "SPECIALIZED",
+  "name": "Test Bike Insurance",
+  "description": "Theft and damage cover for bicycles.",
+  "coverageLabel": "Bike value",
+  "ratePerThousand": 8,
+  "minimumPremium": 100,
+  "policyFee": 20,
+  "minCoverage": 500,
+  "maxCoverage": 20000,
+  "sortOrder": 99
+}
+
+### 76. Get that product (expect 200)
+GET {{host}}/api/admin/products/{{newProduct.response.body.$.code}}
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+### 77. Create it again with the same code (expect 409, already exists)
+POST {{host}}/api/admin/products
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "code": "{{newProduct.response.body.$.code}}",
+  "categoryCode": "SPECIALIZED",
+  "name": "Duplicate Bike",
+  "coverageLabel": "Bike value",
+  "ratePerThousand": 8,
+  "minimumPremium": 100,
+  "policyFee": 20,
+  "minCoverage": 500,
+  "maxCoverage": 20000,
+  "sortOrder": 99
+}
+
+### 78. Unknown category (expect 400, "Unknown category 'BOATS'.")
+POST {{host}}/api/admin/products
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "code": "TEST_{{$randomInt 100000 999999}}",
+  "categoryCode": "BOATS",
+  "name": "Bad Category",
+  "coverageLabel": "Value",
+  "ratePerThousand": 8,
+  "minimumPremium": 100,
+  "policyFee": 20,
+  "minCoverage": 500,
+  "maxCoverage": 20000,
+  "sortOrder": 99
+}
+
+### 79. Minimum coverage bigger than maximum (expect 400)
+POST {{host}}/api/admin/products
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "code": "TEST_{{$randomInt 100000 999999}}",
+  "categoryCode": "SPECIALIZED",
+  "name": "Bad Range",
+  "coverageLabel": "Value",
+  "ratePerThousand": 8,
+  "minimumPremium": 100,
+  "policyFee": 20,
+  "minCoverage": 50000,
+  "maxCoverage": 1000,
+  "sortOrder": 99
+}
+
+### 80. Code with a space and symbols (expect 400, code must use only letters, numbers and underscores)
+POST {{host}}/api/admin/products
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "code": "BAD CODE!",
+  "categoryCode": "SPECIALIZED",
+  "name": "Bad Code",
+  "coverageLabel": "Value",
+  "ratePerThousand": 8,
+  "minimumPremium": 100,
+  "policyFee": 20,
+  "minCoverage": 500,
+  "maxCoverage": 20000,
+  "sortOrder": 99
+}
+
+### 81. Rate of zero (expect 400, validation error on RatePerThousand)
+POST {{host}}/api/admin/products
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "code": "TEST_{{$randomInt 100000 999999}}",
+  "categoryCode": "SPECIALIZED",
+  "name": "Zero Rate",
+  "coverageLabel": "Value",
+  "ratePerThousand": 0,
+  "minimumPremium": 100,
+  "policyFee": 20,
+  "minCoverage": 500,
+  "maxCoverage": 20000,
+  "sortOrder": 99
+}
+
+### 82. Agent tries to create a product (expect 403)
+POST {{host}}/api/admin/products
+Content-Type: application/json
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+{
+  "code": "TEST_{{$randomInt 100000 999999}}",
+  "categoryCode": "SPECIALIZED",
+  "name": "Agent Product",
+  "coverageLabel": "Value",
+  "ratePerThousand": 8,
+  "minimumPremium": 100,
+  "policyFee": 20,
+  "minCoverage": 500,
+  "maxCoverage": 20000,
+  "sortOrder": 99
+}
+
+### 83. SuperUser edits the product (expect 200, rate is now 9, name changed, code unchanged)
+PUT {{host}}/api/admin/products/{{newProduct.response.body.$.code}}
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "categoryCode": "SPECIALIZED",
+  "name": "Test Bike Insurance Plus",
+  "description": "Theft and damage cover for bicycles and e-bikes.",
+  "coverageLabel": "Bike value",
+  "ratePerThousand": 9,
+  "minimumPremium": 100,
+  "policyFee": 20,
+  "minCoverage": 500,
+  "maxCoverage": 25000,
+  "sortOrder": 99
+}
+
+### 84. Edit a product that does not exist (expect 404)
+PUT {{host}}/api/admin/products/NOPE
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "categoryCode": "SPECIALIZED",
+  "name": "Nope",
+  "coverageLabel": "Value",
+  "ratePerThousand": 9,
+  "minimumPremium": 100,
+  "policyFee": 20,
+  "minCoverage": 500,
+  "maxCoverage": 25000,
+  "sortOrder": 99
+}
+
+### 85. Switch the product off (expect 200, isActive false)
+POST {{host}}/api/admin/products/{{newProduct.response.body.$.code}}/deactivate
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+### 86. The public catalogue no longer shows it (expect 404, no token needed)
+GET {{host}}/api/products/{{newProduct.response.body.$.code}}
+
+### 87. A quote cannot be made for a switched-off product (expect 400, "Unknown or unavailable product.")
+POST {{host}}/api/quotes
+Content-Type: application/json
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+{
+  "customerId": {{quoteCustomer.response.body.$.id}},
+  "productCode": "{{newProduct.response.body.$.code}}",
+  "coverageAmount": 1000,
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": {}
+}
+
+### 88. Switch it back on (expect 200, isActive true)
+POST {{host}}/api/admin/products/{{newProduct.response.body.$.code}}/activate
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+### 89. The public catalogue shows it again (expect 200, no questions yet)
+GET {{host}}/api/products/{{newProduct.response.body.$.code}}
+
+### 90. Switch it off again, so test products do not pile up in the catalogue (expect 200, isActive false)
+POST {{host}}/api/admin/products/{{newProduct.response.body.$.code}}/deactivate
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+
+
+###############################################################
+# ADMIN: QUESTIONS AND RATING RULES (SuperUser only)
+###############################################################
+
+### 91. Create a fresh test product (expect 201)
+# @name qProduct
+POST {{host}}/api/admin/products
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "code": "TEST_{{$randomInt 100000 999999}}",
+  "categoryCode": "SPECIALIZED",
+  "name": "Test Scooter Insurance",
+  "description": "Cover for electric scooters.",
+  "coverageLabel": "Scooter value",
+  "ratePerThousand": 10,
+  "minimumPremium": 50,
+  "policyFee": 10,
+  "minCoverage": 1000,
+  "maxCoverage": 50000,
+  "sortOrder": 99
+}
+
+### 92. List its questions (expect 200, empty list [])
+GET {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+### 93. Agent tries to list questions (expect 403)
+GET {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 94. Add a Number question riderAge (expect 201)
+POST {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "key": "riderAge",
+  "label": "Rider age",
+  "type": "Number",
+  "isRequired": true,
+  "minValue": 16,
+  "maxValue": 90,
+  "sortOrder": 1
+}
+
+### 95. Add a Choice question storage (expect 201, options saved as Garage,Street,Locked shed)
+POST {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "key": "storage",
+  "label": "Where is it stored?",
+  "type": "Choice",
+  "isRequired": true,
+  "options": "Garage, Street, Locked shed",
+  "sortOrder": 2
+}
+
+### 96. Same key again (expect 409)
+POST {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "key": "riderAge",
+  "label": "Duplicate",
+  "type": "Number",
+  "isRequired": true,
+  "minValue": 1,
+  "maxValue": 5,
+  "sortOrder": 3
+}
+
+### 97. Same key in different letter case (expect 409)
+POST {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "key": "RIDERAGE",
+  "label": "Duplicate",
+  "type": "Number",
+  "isRequired": true,
+  "minValue": 1,
+  "maxValue": 5,
+  "sortOrder": 3
+}
+
+### 98. Choice question with only one option (expect 400, needs at least 2)
+POST {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "key": "oneOption",
+  "label": "One option",
+  "type": "Choice",
+  "isRequired": true,
+  "options": "Yes",
+  "sortOrder": 3
+}
+
+### 99. Number question with options (expect 400)
+POST {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "key": "numberWithOptions",
+  "label": "Bad",
+  "type": "Number",
+  "isRequired": true,
+  "options": "A,B",
+  "sortOrder": 3
+}
+
+### 100. Number question with min bigger than max (expect 400)
+POST {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "key": "badRange",
+  "label": "Bad range",
+  "type": "Number",
+  "isRequired": true,
+  "minValue": 90,
+  "maxValue": 10,
+  "sortOrder": 3
+}
+
+### 101. Key with a space and symbols (expect 400, validation error on Key)
+POST {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "key": "bad key!",
+  "label": "Bad key",
+  "type": "Number",
+  "isRequired": true,
+  "minValue": 1,
+  "maxValue": 5,
+  "sortOrder": 3
+}
+
+### 102. Rule on riderAge: ages 16 to 24 cost 1.5 times (expect 201)
+# @name ruleYoung
+POST {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions/riderAge/rules
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "fromValue": 16,
+  "toValue": 24,
+  "multiplier": 1.5,
+  "description": "Young rider"
+}
+
+### 103. Rule on riderAge: ages 25 to 90 cost 1.0 times (expect 201)
+POST {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions/riderAge/rules
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "fromValue": 25,
+  "toValue": 90,
+  "multiplier": 1.0,
+  "description": "Adult rider"
+}
+
+### 104. Overlapping range 20 to 30 (expect 409, overlaps an existing rule)
+POST {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions/riderAge/rules
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "fromValue": 20,
+  "toValue": 30,
+  "multiplier": 1.2,
+  "description": "Overlap"
+}
+
+### 105. From bigger than to (expect 400)
+POST {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions/riderAge/rules
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "fromValue": 95,
+  "toValue": 91,
+  "multiplier": 1.2,
+  "description": "Backwards"
+}
+
+### 106. Number rule missing toValue (expect 400)
+POST {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions/riderAge/rules
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "fromValue": 95,
+  "multiplier": 1.2,
+  "description": "No end"
+}
+
+### 107. Rule on storage: Garage costs 0.9 times (expect 201)
+POST {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions/storage/rules
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "matchValue": "Garage",
+  "multiplier": 0.9,
+  "description": "Garage storage discount"
+}
+
+### 108. Second rule for Garage, in lowercase (expect 409, already exists)
+POST {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions/storage/rules
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "matchValue": "garage",
+  "multiplier": 0.8,
+  "description": "Duplicate garage"
+}
+
+### 109. Rule for an answer that is not an option (expect 400)
+POST {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions/storage/rules
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "matchValue": "Roof",
+  "multiplier": 1.3,
+  "description": "Roof storage"
+}
+
+### 110. Choice rule with a number range (expect 400)
+POST {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions/storage/rules
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "matchValue": "Street",
+  "fromValue": 1,
+  "toValue": 5,
+  "multiplier": 1.3,
+  "description": "Mixed up"
+}
+
+### 111. Multiplier of zero (expect 400, validation error on Multiplier)
+POST {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions/storage/rules
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "matchValue": "Street",
+  "multiplier": 0,
+  "description": "Free"
+}
+
+### 112. Edit the Young rider rule, multiplier now 1.6 (expect 200)
+PUT {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions/riderAge/rules/{{ruleYoung.response.body.$.id}}
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "fromValue": 16,
+  "toValue": 24,
+  "multiplier": 1.6,
+  "description": "Young rider"
+}
+
+### 113. List everything (expect 200, riderAge with 2 rules, storage with 1 rule, Young rider 1.6)
+GET {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+### 114. Remove the option "Locked shed" (expect 200, Garage rule still fine)
+PUT {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions/storage
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "label": "Where is it stored?",
+  "isRequired": true,
+  "options": "Garage,Street",
+  "sortOrder": 2
+}
+
+### 115. Remove the option "Garage" while a rule uses it (expect 400)
+PUT {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions/storage
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "label": "Where is it stored?",
+  "isRequired": true,
+  "options": "Street,Indoor",
+  "sortOrder": 2
+}
+
+### 116. Change the riderAge label (expect 200, key and type unchanged)
+PUT {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions/riderAge
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "label": "Age of the rider",
+  "isRequired": true,
+  "minValue": 16,
+  "maxValue": 90,
+  "sortOrder": 1
+}
+
+### 117. Public catalogue (expect 200, 2 questions, no rules or rates visible)
+GET {{host}}/api/products/{{qProduct.response.body.$.code}}
+
+### 118. Create a quote using the new questions (expect 201, status Draft)
+# @name qQuote
+POST {{host}}/api/quotes
+Content-Type: application/json
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+{
+  "customerId": {{quoteCustomer.response.body.$.id}},
+  "productCode": "{{qProduct.response.body.$.code}}",
+  "coverageAmount": 10000,
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": {
+    "riderAge": 20,
+    "storage": "Garage"
+  }
+}
+
+### 119. Give the quote (expect 200, Quoted, premium 154.00)
+# Maths: 10000/1000 x 10 = 100. Then x 1.6 (young rider) = 160. Then x 0.9 (garage) = 144. Then + 10 fee = 154.
+POST {{host}}/api/quotes/{{qQuote.response.body.$.id}}/quote
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 120. A second quote, left as Draft (expect 201)
+# @name qQuote2
+POST {{host}}/api/quotes
+Content-Type: application/json
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+{
+  "customerId": {{quoteCustomer.response.body.$.id}},
+  "productCode": "{{qProduct.response.body.$.code}}",
+  "coverageAmount": 10000,
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": {
+    "riderAge": 30,
+    "storage": "Street"
+  }
+}
+
+### 121. Add a NEW required question bikeCount (expect 201)
+POST {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "key": "bikeCount",
+  "label": "How many scooters?",
+  "type": "Number",
+  "isRequired": true,
+  "minValue": 1,
+  "maxValue": 10,
+  "sortOrder": 3
+}
+
+### 122. Give the old Draft quote (CHECK: ideally 400 saying bikeCount is required. Tell me what you get)
+POST {{host}}/api/quotes/{{qQuote2.response.body.$.id}}/quote
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 123. Remove storage, which a quote already answered (expect 409)
+DELETE {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions/storage
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+### 124. Remove bikeCount, which nobody answered (expect 204)
+DELETE {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions/bikeCount
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+### 125. Remove the Young rider rule (expect 204)
+DELETE {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions/riderAge/rules/{{ruleYoung.response.body.$.id}}
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+### 126. Remove the same rule again (expect 404)
+DELETE {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions/riderAge/rules/{{ruleYoung.response.body.$.id}}
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+### 127. Questions of a product that does not exist (expect 404)
+GET {{host}}/api/admin/products/NOPE/questions
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+### 128. Edit a question that does not exist (expect 404)
+PUT {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/questions/nothing
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "label": "Nothing",
+  "isRequired": true,
+  "minValue": 1,
+  "maxValue": 5,
+  "sortOrder": 9
+}
+
+### 129. Clean up: switch the test product off (expect 200, isActive false)
+POST {{host}}/api/admin/products/{{qProduct.response.body.$.code}}/deactivate
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+
+
+###############################################################
+# ADMIN: OLD DRAFT QUOTES vs NEW REQUIRED QUESTIONS
+###############################################################
+
+### 130. Create a fresh test product (expect 201)
+# @name vProduct
+POST {{host}}/api/admin/products
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "code": "TEST_{{$randomInt 100000 999999}}",
+  "categoryCode": "SPECIALIZED",
+  "name": "Test Drone Insurance",
+  "description": "Cover for hobby drones.",
+  "coverageLabel": "Drone value",
+  "ratePerThousand": 10,
+  "minimumPremium": 50,
+  "policyFee": 10,
+  "minCoverage": 1000,
+  "maxCoverage": 50000,
+  "sortOrder": 99
+}
+
+### 131. Add a required question pilotAge (expect 201)
+POST {{host}}/api/admin/products/{{vProduct.response.body.$.code}}/questions
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "key": "pilotAge",
+  "label": "Pilot age",
+  "type": "Number",
+  "isRequired": true,
+  "minValue": 16,
+  "maxValue": 90,
+  "sortOrder": 1
+}
+
+### 132. Create a Draft quote with that one answer (expect 201, status Draft)
+# @name vQuote
+POST {{host}}/api/quotes
+Content-Type: application/json
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+{
+  "customerId": {{quoteCustomer.response.body.$.id}},
+  "productCode": "{{vProduct.response.body.$.code}}",
+  "coverageAmount": 10000,
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": {
+    "pilotAge": 30
+  }
+}
+
+### 133. The SuperUser adds a NEW required question droneCount (expect 201)
+POST {{host}}/api/admin/products/{{vProduct.response.body.$.code}}/questions
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "key": "droneCount",
+  "label": "How many drones?",
+  "type": "Number",
+  "isRequired": true,
+  "minValue": 1,
+  "maxValue": 10,
+  "sortOrder": 2
+}
+
+### 134. Give the old Draft quote (expect 400, "'How many drones?' is required.")
+POST {{host}}/api/quotes/{{vQuote.response.body.$.id}}/quote
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 135. Check the quote is still a Draft with no premium (expect 200, status Draft, premium null)
+GET {{host}}/api/quotes/{{vQuote.response.body.$.id}}
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 136. Make the new question optional (expect 200, isRequired false)
+PUT {{host}}/api/admin/products/{{vProduct.response.body.$.code}}/questions/droneCount
+Content-Type: application/json
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+{
+  "label": "How many drones?",
+  "isRequired": false,
+  "minValue": 1,
+  "maxValue": 10,
+  "sortOrder": 2
+}
+
+### 137. Give the same quote again (expect 200, Quoted, premium 110.00: 100 base + 10 fee)
+POST {{host}}/api/quotes/{{vQuote.response.body.$.id}}/quote
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 138. Clean up: switch the test product off (expect 200, isActive false)
+POST {{host}}/api/admin/products/{{vProduct.response.body.$.code}}/deactivate
+Authorization: Bearer {{superLogin.response.body.$.token}}
+
+
+
+###############################################################
+# PUBLIC FRONT DOOR: REQUESTS (no login needed)
+###############################################################
+
+### 139. A member of the public sends a request (expect 201, an id and a thank-you message)
+# @name publicRequest
+POST {{host}}/api/requests
+Content-Type: application/json
+
+{
+  "firstName": "Maya",
+  "lastName": "Rivera",
+  "email": "maya.rivera{{$randomInt 1000 9999}}@example.com",
+  "phoneNumber": "603-555-0142",
+  "productCode": "AUTO",
+  "coverageAmount": 80000,
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": {
+    "driverAge": 40,
+    "accidentsLast3Years": 0,
+    "vehicleType": "Sedan"
+  }
+}
+
+### 140. Missing name and a bad email (expect 400, validation errors on FirstName and Email)
+POST {{host}}/api/requests
+Content-Type: application/json
+
+{
+  "firstName": "",
+  "lastName": "Rivera",
+  "email": "not-an-email",
+  "phoneNumber": "603-555-0142",
+  "productCode": "AUTO",
+  "coverageAmount": 80000,
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": {
+    "driverAge": 40,
+    "accidentsLast3Years": 0,
+    "vehicleType": "Sedan"
+  }
+}
+
+### 141. Phone with letters (expect 400, validation error on PhoneNumber)
+POST {{host}}/api/requests
+Content-Type: application/json
+
+{
+  "firstName": "Maya",
+  "lastName": "Rivera",
+  "email": "maya.rivera@example.com",
+  "phoneNumber": "call me maybe",
+  "productCode": "AUTO",
+  "coverageAmount": 80000,
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": {
+    "driverAge": 40,
+    "accidentsLast3Years": 0,
+    "vehicleType": "Sedan"
+  }
+}
+
+### 142. Unknown product (expect 400, "Unknown or unavailable product.")
+POST {{host}}/api/requests
+Content-Type: application/json
+
+{
+  "firstName": "Maya",
+  "lastName": "Rivera",
+  "email": "maya.rivera@example.com",
+  "phoneNumber": "603-555-0142",
+  "productCode": "NOPE",
+  "coverageAmount": 80000,
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": {}
+}
+
+### 143. Effective date in the past (expect 400)
+POST {{host}}/api/requests
+Content-Type: application/json
+
+{
+  "firstName": "Maya",
+  "lastName": "Rivera",
+  "email": "maya.rivera@example.com",
+  "phoneNumber": "603-555-0142",
+  "productCode": "AUTO",
+  "coverageAmount": 80000,
+  "requestedEffectiveDate": "2020-01-01",
+  "answers": {
+    "driverAge": 40,
+    "accidentsLast3Years": 0,
+    "vehicleType": "Sedan"
+  }
+}
+
+### 144. Coverage far too big for this product (expect 400, message with the product's limits)
+POST {{host}}/api/requests
+Content-Type: application/json
+
+{
+  "firstName": "Maya",
+  "lastName": "Rivera",
+  "email": "maya.rivera@example.com",
+  "phoneNumber": "603-555-0142",
+  "productCode": "AUTO",
+  "coverageAmount": 900000000,
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": {
+    "driverAge": 40,
+    "accidentsLast3Years": 0,
+    "vehicleType": "Sedan"
+  }
+}
+
+### 145. A required answer is missing (expect 400, says the question is required)
+POST {{host}}/api/requests
+Content-Type: application/json
+
+{
+  "firstName": "Maya",
+  "lastName": "Rivera",
+  "email": "maya.rivera@example.com",
+  "phoneNumber": "603-555-0142",
+  "productCode": "AUTO",
+  "coverageAmount": 80000,
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": {
+    "accidentsLast3Years": 0,
+    "vehicleType": "Sedan"
+  }
+}
+
+### 146. An answer for a question that does not exist (expect 400, "'favouriteColour' is not a question for ...")
+POST {{host}}/api/requests
+Content-Type: application/json
+
+{
+  "firstName": "Maya",
+  "lastName": "Rivera",
+  "email": "maya.rivera@example.com",
+  "phoneNumber": "603-555-0142",
+  "productCode": "AUTO",
+  "coverageAmount": 80000,
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": {
+    "driverAge": 40,
+    "accidentsLast3Years": 0,
+    "vehicleType": "Sedan",
+    "favouriteColour": "Blue"
+  }
+}
+
+### 147. A choice answer that is not in the list (expect 400, "must be one of: ...")
+POST {{host}}/api/requests
+Content-Type: application/json
+
+{
+  "firstName": "Maya",
+  "lastName": "Rivera",
+  "email": "maya.rivera@example.com",
+  "phoneNumber": "603-555-0142",
+  "productCode": "AUTO",
+  "coverageAmount": 80000,
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": {
+    "driverAge": 40,
+    "accidentsLast3Years": 0,
+    "vehicleType": "Spaceship"
+  }
+}
+
+
+
+###############################################################
+# AGENT INBOX (login needed).
+# Log in again first if your tokens are older than 1 hour.
+###############################################################
+
+### 148. No login (expect 401)
+GET {{host}}/api/inbox
+
+### 149. Underwriter is not allowed in the inbox (expect 403)
+GET {{host}}/api/inbox
+Authorization: Bearer {{underLogin.response.body.$.token}}
+
+### 150. Agent sees new requests, oldest first (expect 200, Maya's request is in the list as New)
+GET {{host}}/api/inbox?status=New
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 151. Bad status word (expect 400)
+GET {{host}}/api/inbox?status=Banana
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 152. Agent opens request 1 (expect 200, full details and answers)
+GET {{host}}/api/inbox/1
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 153. Request that does not exist (expect 404, "Request not found.")
+GET {{host}}/api/inbox/99999
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 154. A brand-new request, to accept (expect 201)
+# @name request2
+POST {{host}}/api/requests
+Content-Type: application/json
+
+{
+  "firstName": "Noah",
+  "lastName": "Becker",
+  "email": "noah.becker{{$randomInt 1000 9999}}@example.com",
+  "phoneNumber": "603-555-0177",
+  "productCode": "AUTO",
+  "coverageAmount": 120000,
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": {
+    "driverAge": 35,
+    "accidentsLast3Years": 1,
+    "vehicleType": "SUV"
+  }
+}
+
+### 155. Agent ACCEPTS it (expect 200, status Accepted, customerId and quoteId filled in)
+# @name accepted
+POST {{host}}/api/inbox/{{request2.response.body.$.id}}/accept
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 156. Accept the same request again (expect 409, "already been accepted")
+POST {{host}}/api/inbox/{{request2.response.body.$.id}}/accept
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 157. Decline an accepted request (expect 409)
+POST {{host}}/api/inbox/{{request2.response.body.$.id}}/decline
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+Content-Type: application/json
+
+{ "reason": "Changed my mind" }
+
+### 158. The quote that was created is a Draft with the customer's answers (expect 200, status Draft, premium null)
+GET {{host}}/api/quotes/{{accepted.response.body.$.quoteId}}
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 159. The agent now prices it with the normal lifecycle (expect 200, status Quoted, a premium)
+POST {{host}}/api/quotes/{{accepted.response.body.$.quoteId}}/quote
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 160. Noah sends another request with the same email (expect 201)
+# @name request3
+POST {{host}}/api/requests
+Content-Type: application/json
+
+{
+  "firstName": "Noah",
+  "lastName": "Becker",
+  "email": "{{accepted.response.body.$.email}}",
+  "phoneNumber": "603-555-0177",
+  "productCode": "AUTO",
+  "coverageAmount": 60000,
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": {
+    "driverAge": 35,
+    "accidentsLast3Years": 1,
+    "vehicleType": "Sedan"
+  }
+}
+
+### 161. Accept it: the SAME customer is reused (expect 200, customerId equals request 155's customerId, a different quoteId)
+POST {{host}}/api/inbox/{{request3.response.body.$.id}}/accept
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 162. Another new request, to decline (expect 201)
+# @name request4
+POST {{host}}/api/requests
+Content-Type: application/json
+
+{
+  "firstName": "Lena",
+  "lastName": "Ortiz",
+  "email": "lena.ortiz{{$randomInt 1000 9999}}@example.com",
+  "phoneNumber": "603-555-0188",
+  "productCode": "AUTO",
+  "coverageAmount": 50000,
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": {
+    "driverAge": 19,
+    "accidentsLast3Years": 3,
+    "vehicleType": "Sports car"
+  }
+}
+
+### 163. Decline with no reason (expect 400, validation error on Reason)
+POST {{host}}/api/inbox/{{request4.response.body.$.id}}/decline
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+Content-Type: application/json
+
+{ "reason": "" }
+
+### 164. Decline with a reason (expect 200, status Declined, reason saved, customerId and quoteId empty)
+POST {{host}}/api/inbox/{{request4.response.body.$.id}}/decline
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+Content-Type: application/json
+
+{ "reason": "Risk is outside our appetite for this product." }
+
+### 165. Accept a declined request (expect 409)
+POST {{host}}/api/inbox/{{request4.response.body.$.id}}/accept
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 166. Final view of the inbox (expect 200, Maya New, Noah x2 Accepted, Lena Declined)
+GET {{host}}/api/inbox
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+
+
+###############################################################
+# RATE LIMIT (public form: 10 requests per minute per visitor)
+###############################################################
+
+### 167. Click "Send request" on THIS request 11 times quickly.
+# Requests 1 to 10: 400 (blank name, nothing is saved).
+# Request 11: 429, "Too many requests. Please wait a minute and try again."
+# Wait 60 seconds, click once more: back to 400.
+POST {{host}}/api/requests
+Content-Type: application/json
+
+{
+  "firstName": "Alex",
+  "lastName": "Test",
+  "email": "limit.test@example.com",
+  "phoneNumber": "603-555-0199",
+  "productCode": "AUTO",
+  "coverageAmount": 80000,
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": {
+    "driverAge": 40,
+    "accidentsLast3Years": 0,
+    "vehicleType": "Sedan"
+  }
+}

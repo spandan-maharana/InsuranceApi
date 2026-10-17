@@ -1,7 +1,6 @@
 ﻿namespace InsuranceApi.Models;
 
-public enum ProductType { Auto, Home, Life, Health }
-public enum RiskLevel { Low, Medium, High }
-public enum QuoteStatus { Quoted, Bound, Expired}
-public enum  PolicyStatus{Active, Cancelled}
+public enum QuoteStatus { Draft, Quoted, Accepted, Bound, Issued, Expired, Discarded}
+public enum QuoteAction { Quote, Accept, Bind, Issue, Discard}
+public enum PolicyStatus{ Issued, Cancelled}
 

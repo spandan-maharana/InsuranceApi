@@ -34,6 +34,10 @@ public class AuthController : ControllerBase
         {
             role = "Agent";
         }
+        else if(login.Username == "underwriter" && login.Password == "Underwriter123!")
+        {
+            role = "Underwriter";
+        }
         if (role == null)
         {
             return Unauthorized(new {Error = "Invalid username or password"});

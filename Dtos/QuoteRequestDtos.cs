@@ -32,9 +32,6 @@ public class RequestInputDto
     [StringLength(30)]
     public string ProductCode { get; set; } = string.Empty;
 
-    [Range(1, 1000000000)]
-    public decimal CoverageAmount { get; set; }
-
     public DateOnly RequestedEffectiveDate { get; set; }
 
     // The product's questions, e.g. { "riderAge": 20, "storage": "Garage" }
@@ -57,10 +54,14 @@ public class QuoteRequestDto
     public string LastName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string PhoneNumber { get; set; } = string.Empty;
-
     public string ProductCode { get; set; } = string.Empty;
     public string ProductName { get; set; } = string.Empty;
     public decimal CoverageAmount { get; set; }
+    public string CoverageLabel { get; set; } = string.Empty;
+    public decimal MinCoverage { get; set; }
+    public decimal MaxCoverage { get; set; }
+    public CoverageResult? CoverageBreakdown { get; set; }
+
     public DateOnly RequestedEffectiveDate { get; set; }
     public Dictionary<string, string> Answers { get; set; } = new();
 
@@ -72,6 +73,12 @@ public class QuoteRequestDto
     // Filled in once the request has been accepted
     public int? CustomerId { get; set; }
     public int? QuoteId { get; set; }
+}
+
+public class AcceptRequestDto
+{
+    [Range(1, 1000000000)]
+    public decimal? CoverageAmount { get; set; }
 }
 
 // What an agent sends to decline a request

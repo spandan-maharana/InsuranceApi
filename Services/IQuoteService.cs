@@ -5,8 +5,13 @@ namespace InsuranceApi.Services;
 
 public interface IQuoteService
 {
-    Task<List<QuoteDto>> GetAllAsync();
+    // owner = null returns every quote; otherwise only the quotes created by that user
+    Task<List<QuoteDto>> GetAllAsync(string? owner = null);
+
     Task<QuoteDto?> GetByIdAsync(int id);
-    Task<QuoteDto?> CreateAsync(QuoteInputDto input);
+
+    // Returns null when the customer does not exist
+    Task<QuoteDto?> CreateAsync(QuoteInputDto input, string? createdBy = null);
+
     Task<QuoteDto?> ApplyActionAsync(int id, QuoteAction action);
 }

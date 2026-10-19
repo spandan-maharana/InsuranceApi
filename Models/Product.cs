@@ -26,6 +26,8 @@ public class Product
 
     public decimal MinCoverage { get; set; }
     public decimal MaxCoverage { get; set; }
+    public decimal BaseCoverage { get; set; }
+    public decimal CoverageStep { get; set; } = 1000m;
 
     public int SortOrder { get; set; }
 

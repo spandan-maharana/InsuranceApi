@@ -1,4 +1,6 @@
-﻿namespace InsuranceApi.Models;
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace InsuranceApi.Models;
 
 public class Quote
 {
@@ -16,4 +18,6 @@ public class Quote
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? ExpiresAt { get; set; } //Expiry time can be empty
+    [MaxLength(100)]
+    public string? CreatedBy { get; set; }
 }

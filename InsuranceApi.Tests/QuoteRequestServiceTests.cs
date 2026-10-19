@@ -26,7 +26,8 @@ public class QuoteRequestServiceTests
         return new QuoteRequestService(db, NullLogger<QuoteRequestService>.Instance);
     }
 
-    // A good Auto request. Tests change one thing at a time from this.
+    // A good Auto request. The engine recommends 125,000 for it.
+    // Tests change one thing at a time from this.
     private static RequestInputDto GoodInput(string email = "maya@example.com")
     {
         return new RequestInputDto
@@ -36,7 +37,6 @@ public class QuoteRequestServiceTests
             Email = email,
             PhoneNumber = "603-555-0142",
             ProductCode = "AUTO",
-            CoverageAmount = 80000,
             RequestedEffectiveDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(1),
             Answers = Answers(("driverAge", 40), ("accidentsLast3Years", 0), ("vehicleType", "Sedan"))
         };
@@ -63,6 +63,35 @@ public class QuoteRequestServiceTests
         Assert.Null(saved.CustomerId);
         Assert.Null(saved.QuoteId);
         Assert.Contains("\"driverAge\":\"40\"", saved.Answers);
+    }
+
+    [Fact]
+    public async Task Submit_ValidRequest_SavesRecommendedCoverageAndBreakdown()
+    {
+        using var db = NewDb();
+        var service = NewService(db);
+
+        await service.SubmitAsync(GoodInput());
+
+        // 100,000 base x 1.25 (adult driver) x 1.00 (no accidents) x 1.00 (sedan) = 125,000
+        var saved = await db.QuoteRequests.SingleAsync();
+        Assert.Equal(125000m, saved.CoverageAmount);
+        Assert.False(string.IsNullOrWhiteSpace(saved.CoverageBreakdown));
+    }
+
+    [Fact]
+    public async Task Submit_RiskierProfile_GetsHigherRecommendedCoverage()
+    {
+        using var db = NewDb();
+        var service = NewService(db);
+        var input = GoodInput();
+        input.Answers = Answers(("driverAge", 30), ("accidentsLast3Years", 2), ("vehicleType", "SUV"));
+
+        await service.SubmitAsync(input);
+
+        // 100,000 x 1.25 x 1.50 x 1.25 = 234,375, rounded to the nearest 5,000 = 235,000
+        var saved = await db.QuoteRequests.SingleAsync();
+        Assert.Equal(234375m, saved.CoverageAmount);
     }
 
     [Fact]
@@ -116,19 +145,6 @@ public class QuoteRequestServiceTests
         var ex = await Assert.ThrowsAsync<BadRequestException>(() => service.SubmitAsync(GoodInput()));
 
         Assert.Equal("Unknown or unavailable product.", ex.Message);
-    }
-
-    [Fact]
-    public async Task Submit_CoverageOutsideProductLimits_Throws()
-    {
-        using var db = NewDb();
-        var service = NewService(db);
-        var input = GoodInput();
-        input.CoverageAmount = 900000000;
-
-        var ex = await Assert.ThrowsAsync<BadRequestException>(() => service.SubmitAsync(input));
-
-        Assert.Contains("must be between", ex.Message);
     }
 
     [Fact]
@@ -213,6 +229,24 @@ public class QuoteRequestServiceTests
     }
 
     [Fact]
+    public async Task Get_ShowsCoverageLimitsAndBreakdown()
+    {
+        using var db = NewDb();
+        var service = NewService(db);
+        var receipt = await service.SubmitAsync(GoodInput());
+
+        var dto = await service.GetAsync(receipt.Id);
+
+        Assert.Equal(125000m, dto!.CoverageAmount);
+        Assert.Equal(10000m, dto.MinCoverage);
+        Assert.Equal(500000m, dto.MaxCoverage);
+        Assert.Equal("Liability coverage", dto.CoverageLabel);
+        Assert.NotNull(dto.CoverageBreakdown);
+        Assert.Equal(125000m, dto.CoverageBreakdown!.Coverage);
+        Assert.NotEmpty(dto.CoverageBreakdown.Steps);
+    }
+
+    [Fact]
     public async Task Get_MissingRequest_ReturnsNull()
     {
         using var db = NewDb();
@@ -246,8 +280,65 @@ public class QuoteRequestServiceTests
         Assert.Equal(customer.Id, quote.CustomerId);
         Assert.Equal(QuoteStatus.Draft, quote.Status);
         Assert.Null(quote.Premium);
-        Assert.Equal(80000m, quote.CoverageAmount);
+        // With no agent override, the quote uses the engine's recommended coverage
+        Assert.Equal(125000m, quote.CoverageAmount);
         Assert.Contains("\"vehicleType\":\"Sedan\"", quote.Answers);
+    }
+
+    [Fact]
+    public async Task Accept_WithAgentOverride_QuoteUsesAgentAmount()
+    {
+        using var db = NewDb();
+        var service = NewService(db);
+        var receipt = await service.SubmitAsync(GoodInput());
+
+        await service.AcceptAsync(receipt.Id, new AcceptRequestDto { CoverageAmount = 150000m });
+
+        var quote = await db.Quotes.SingleAsync();
+        Assert.Equal(150000m, quote.CoverageAmount);
+    }
+
+    [Fact]
+    public async Task Accept_WithAgentOverride_RequestStillShowsRecommendedAmount()
+    {
+        using var db = NewDb();
+        var service = NewService(db);
+        var receipt = await service.SubmitAsync(GoodInput());
+
+        var result = await service.AcceptAsync(receipt.Id, new AcceptRequestDto { CoverageAmount = 150000m });
+
+        // The inbox keeps showing what the engine recommended
+        Assert.Equal(125000m, result!.CoverageAmount);
+    }
+
+    [Fact]
+    public async Task Accept_OverrideAboveProductMaximum_ThrowsAndRequestStaysNew()
+    {
+        using var db = NewDb();
+        var service = NewService(db);
+        var receipt = await service.SubmitAsync(GoodInput());
+
+        var ex = await Assert.ThrowsAsync<BadRequestException>(() =>
+            service.AcceptAsync(receipt.Id, new AcceptRequestDto { CoverageAmount = 900000m }));
+
+        Assert.Contains("must be between", ex.Message);
+        Assert.Equal(RequestStatus.New, (await db.QuoteRequests.SingleAsync()).Status);
+        Assert.Equal(0, await db.Customers.CountAsync());
+        Assert.Equal(0, await db.Quotes.CountAsync());
+    }
+
+    [Fact]
+    public async Task Accept_OverrideBelowProductMinimum_Throws()
+    {
+        using var db = NewDb();
+        var service = NewService(db);
+        var receipt = await service.SubmitAsync(GoodInput());
+
+        var ex = await Assert.ThrowsAsync<BadRequestException>(() =>
+            service.AcceptAsync(receipt.Id, new AcceptRequestDto { CoverageAmount = 5000m }));
+
+        Assert.Contains("must be between", ex.Message);
+        Assert.Equal(0, await db.Quotes.CountAsync());
     }
 
     [Fact]

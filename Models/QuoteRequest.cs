@@ -11,6 +11,7 @@ public class QuoteRequest
     public int ProductId { get; set; }
     public Product? Product { get; set; }
     public decimal CoverageAmount { get; set; }
+    public string? CoverageBreakdown { get; set; }
     public DateOnly RequestedEffectiveDate { get; set; }
     public string Answers { get; set; } = "{}";
     public RequestStatus Status { get; set; } = RequestStatus.New;

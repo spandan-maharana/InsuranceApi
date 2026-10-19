@@ -3,10 +3,10 @@ using InsuranceApi.Models;
 using InsuranceApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace InsuranceApi.Controllers;
 
-// The agent's inbox. Login required.
 [ApiController]
 [Route("api/inbox")]
 [Authorize(Roles = "Agent,SuperUser")]
@@ -19,47 +19,52 @@ public class QuoteRequestInboxController : ControllerBase
         _service = service;
     }
 
-    // GET api/inbox            (all, oldest first)
-    // GET api/inbox?status=New (only one status: New, Accepted or Declined)
+    // GET api/inbox            -> all requests
+    // GET api/inbox?status=New -> only requests with that status
     [HttpGet]
-    public async Task<IActionResult> List([FromQuery] RequestStatus? status)
+    public async Task<ActionResult<List<QuoteRequestDto>>> List([FromQuery] RequestStatus? status)
     {
         return Ok(await _service.ListAsync(status));
     }
 
-    // GET api/inbox/5
     [HttpGet("{id:int}")]
-    public async Task<IActionResult> Get(int id)
+    public async Task<ActionResult<QuoteRequestDto>> Get(int id)
     {
         var request = await _service.GetAsync(id);
         if (request == null)
         {
             return NotFound(new { error = "Request not found." });
         }
+
         return Ok(request);
     }
 
-    // POST api/inbox/5/accept
+    // The body is optional. Send { "coverageAmount": 150000 } to use a different amount
+    // than the recommended one. Send nothing to use the recommended amount.
+    // The agent who accepts becomes the owner of the new quote.
     [HttpPost("{id:int}/accept")]
-    public async Task<IActionResult> Accept(int id)
+    public async Task<ActionResult<QuoteRequestDto>> Accept(
+        int id,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] AcceptRequestDto? input)
     {
-        var request = await _service.AcceptAsync(id);
+        var request = await _service.AcceptAsync(id, input, User.Identity?.Name);
         if (request == null)
         {
             return NotFound(new { error = "Request not found." });
         }
+
         return Ok(request);
     }
 
-    // POST api/inbox/5/decline
     [HttpPost("{id:int}/decline")]
-    public async Task<IActionResult> Decline(int id, [FromBody] DeclineRequestDto input)
+    public async Task<ActionResult<QuoteRequestDto>> Decline(int id, [FromBody] DeclineRequestDto input)
     {
         var request = await _service.DeclineAsync(id, input);
         if (request == null)
         {
             return NotFound(new { error = "Request not found." });
         }
+
         return Ok(request);
     }
 }

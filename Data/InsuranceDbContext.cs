@@ -16,6 +16,7 @@ public class InsuranceDbContext : DbContext
     public DbSet<ProductQuestion> ProductQuestions => Set<ProductQuestion>();
     public DbSet<RatingRules> RatingRules => Set<RatingRules>();
     public DbSet<QuoteRequest> QuoteRequests => Set<QuoteRequest>();
+    public DbSet<AppUser> Users => Set<AppUser>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder) //This is a model validation step for the database, where the rule is 'no two customers can have the same email address'.
     {
@@ -158,6 +159,17 @@ public class InsuranceDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(r => r.ProductId)
                   .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<AppUser>(entity =>
+        {
+            entity.Property(u => u.Username).HasMaxLength(50);
+            entity.Property(u => u.DisplayName).HasMaxLength(100);
+            entity.Property(u => u.PasswordHash).HasMaxLength(200);
+            entity.Property(u => u.Role).HasMaxLength(20);
+
+            // No two users can share a username
+            entity.HasIndex(u => u.Username).IsUnique();
         });
     }
 }

@@ -1612,3 +1612,146 @@ Content-Type: application/json
     "vehicleType": "Sedan"
   }
 }
+
+### 168 - Public request with NO coverage amount (expect 201)
+# @name engineA
+POST {{host}}/api/requests
+Content-Type: application/json
+
+{
+  "firstName": "Priya",
+  "lastName": "Nair",
+  "email": "priya.engine@example.com",
+  "phoneNumber": "603-555-0188",
+  "productCode": "AUTO",
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": { "driverAge": 40, "accidentsLast3Years": 0, "vehicleType": "Sedan" }
+}
+
+### 169 - Agent views it: coverageAmount should be 125000, with a breakdown
+GET {{host}}/api/inbox/{{engineA.response.body.$.id}}
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 170 - Accept with NO body: the quote uses the recommended 125000
+# @name acceptA
+POST {{host}}/api/inbox/{{engineA.response.body.$.id}}/accept
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 171 - The new Draft quote should have coverageAmount 125000
+GET {{host}}/api/quotes/{{acceptA.response.body.$.quoteId}}
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 172 - A riskier profile (SUV, age 30, 2 accidents): recommended should be 235000
+# @name engineB
+POST {{host}}/api/requests
+Content-Type: application/json
+
+{
+  "firstName": "Alex",
+  "lastName": "Max",
+  "email": "alex.engine@example.com",
+  "phoneNumber": "222-222-2222",
+  "productCode": "AUTO",
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": { "driverAge": 30, "accidentsLast3Years": 2, "vehicleType": "SUV" }
+}
+
+### 173 - Accept with an agent override of 150000
+# @name acceptB
+POST {{host}}/api/inbox/{{engineB.response.body.$.id}}/accept
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+Content-Type: application/json
+
+{ "coverageAmount": 150000 }
+
+### 174 - The quote should have coverageAmount 150000
+GET {{host}}/api/quotes/{{acceptB.response.body.$.quoteId}}
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 175 - Another request, to test an override that is too high
+# @name engineC
+POST {{host}}/api/requests
+Content-Type: application/json
+
+{
+  "firstName": "Sam",
+  "lastName": "Lee",
+  "email": "sam.engine@example.com",
+  "phoneNumber": "603-555-0199",
+  "productCode": "AUTO",
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": { "driverAge": 52, "accidentsLast3Years": 1, "vehicleType": "Truck" }
+}
+
+### 176 - Override of 900000 is above the Auto maximum (expect 400)
+POST {{host}}/api/inbox/{{engineC.response.body.$.id}}/accept
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+Content-Type: application/json
+
+{ "coverageAmount": 900000 }
+
+### 177 - The request should still be New
+GET {{host}}/api/inbox/{{engineC.response.body.$.id}}
+Authorization: Bearer {{agentLogin.response.body.$.token}}
+
+### 178 - Agent logs in: expect displayName "Alex Morgan"
+# @name dashAgent
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "username": "agent", "password": "Agent123!" }
+
+### 179 - A new public request
+# @name dashReq
+POST {{host}}/api/requests
+Content-Type: application/json
+
+{
+  "firstName": "Dana",
+  "lastName": "Cole",
+  "email": "dana.dashboard@example.com",
+  "phoneNumber": "603-555-0123",
+  "productCode": "AUTO",
+  "requestedEffectiveDate": "{{effectiveDate}}",
+  "answers": { "driverAge": 35, "accidentsLast3Years": 0, "vehicleType": "Sedan" }
+}
+
+### 180 - New request count (the mail icon): should be at least 1
+GET {{host}}/api/dashboard/new-requests
+Authorization: Bearer {{dashAgent.response.body.$.token}}
+
+### 181 - Agent accepts the request: this creates a Draft quote owned by the agent
+# @name dashAccept
+POST {{host}}/api/inbox/{{dashReq.response.body.$.id}}/accept
+Authorization: Bearer {{dashAgent.response.body.$.token}}
+
+### 182 - Dashboard now: draftQuotes should be 1 (the first time you run these)
+GET {{host}}/api/dashboard
+Authorization: Bearer {{dashAgent.response.body.$.token}}
+
+### 183 - Agent prices the quote
+POST {{host}}/api/quotes/{{dashAccept.response.body.$.quoteId}}/quote
+Authorization: Bearer {{dashAgent.response.body.$.token}}
+
+### 184 - Agent marks the quote accepted
+POST {{host}}/api/quotes/{{dashAccept.response.body.$.quoteId}}/accept
+Authorization: Bearer {{dashAgent.response.body.$.token}}
+
+### 185 - Underwriter logs in
+# @name dashUw
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "username": "underwriter", "password": "Underwriter123!" }
+
+### 186 - Underwriter binds
+POST {{host}}/api/quotes/{{dashAccept.response.body.$.quoteId}}/bind
+Authorization: Bearer {{dashUw.response.body.$.token}}
+
+### 187 - Underwriter issues: this creates the policy
+POST {{host}}/api/quotes/{{dashAccept.response.body.$.quoteId}}/issue
+Authorization: Bearer {{dashUw.response.body.$.token}}
+
+### 188 - Dashboard again: draftQuotes 0, issuedQuotes 1, and one row in issuedPolicies
+GET {{host}}/api/dashboard
+Authorization: Bearer {{dashAgent.response.body.$.token}}

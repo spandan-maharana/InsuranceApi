@@ -22,6 +22,7 @@ public class QuoteDto
 {
     public int Id { get; set; }
     public int CustomerId { get; set; }
+    public string CustomerName { get; set; } = "";
     public string ProductCode { get; set; } = "";
     public string ProductName { get; set; } = "";
     public Dictionary<string, string> Answers { get; set; } = new();
@@ -30,7 +31,7 @@ public class QuoteDto
     public PremiumResult? PremiumBreakdown { get; set; }
     public DateOnly RequestedEffectiveDate { get; set; }
     public QuoteStatus Status { get; set; }
+    public string? CreatedBy { get; set; } //The agent who owns this quote
     public DateTime CreatedAt { get; set; }
     public DateTime? ExpiresAt { get; set; } //Acceptable to null values
 }
-

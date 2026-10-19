@@ -27,4 +27,5 @@ public class ProductQuestion
     public int SortOrder { get; set; }
 
     public List<RatingRules> Rules { get; set; } = new();
+    public List<CoverageRule> CoverageRules { get; set; } = new();
 }

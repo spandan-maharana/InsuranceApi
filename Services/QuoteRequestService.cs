@@ -25,25 +25,22 @@ public class QuoteRequestService : IQuoteRequestService
             throw new BadRequestException("The effective date cannot be in the past.");
         }
 
-        // Find the product, together with its questions
+        // Find the product, together with its questions and coverage rules
         var code = input.ProductCode.Trim().ToUpperInvariant();
         var product = await _context.Products
             .Include(p => p.Questions)
+                .ThenInclude(q => q.CoverageRules)
             .FirstOrDefaultAsync(p => p.Code == code && p.IsActive);
         if (product == null)
         {
             throw new BadRequestException("Unknown or unavailable product.");
         }
 
-        // The coverage must fit this product's limits
-        if (input.CoverageAmount < product.MinCoverage || input.CoverageAmount > product.MaxCoverage)
-        {
-            throw new BadRequestException(
-                $"{product.CoverageLabel} for {product.Name} must be between {product.MinCoverage:N0} and {product.MaxCoverage:N0}.");
-        }
-
         // Check the answers against the product's questions (same checker as quotes)
         var answers = AnswerValidator.Validate(product, input.Answers);
+
+        // The engine works out the recommended coverage from the answers
+        var coverage = CoverageCalculator.Calculate(product, answers);
 
         var request = new QuoteRequest
         {
@@ -52,7 +49,8 @@ public class QuoteRequestService : IQuoteRequestService
             Email = input.Email.Trim(),
             PhoneNumber = input.PhoneNumber.Trim(),
             ProductId = product.Id,
-            CoverageAmount = input.CoverageAmount,
+            CoverageAmount = coverage.Coverage,
+            CoverageBreakdown = JsonSerializer.Serialize(coverage),
             RequestedEffectiveDate = input.RequestedEffectiveDate,
             Answers = JsonSerializer.Serialize(answers)
         };
@@ -98,7 +96,7 @@ public class QuoteRequestService : IQuoteRequestService
         return request == null ? null : ToDto(request);
     }
 
-    public async Task<QuoteRequestDto?> AcceptAsync(int id)
+    public async Task<QuoteRequestDto?> AcceptAsync(int id, AcceptRequestDto? input = null, string? acceptedBy = null)
     {
         var request = await _context.QuoteRequests
             .Include(r => r.Product)
@@ -111,6 +109,20 @@ public class QuoteRequestService : IQuoteRequestService
         if (request.Status != RequestStatus.New)
         {
             throw new ConflictException($"This request has already been {request.Status.ToString().ToLower()}.");
+        }
+
+        // Use the recommended coverage, unless the agent typed a different amount
+        var coverage = request.CoverageAmount;
+        if (input?.CoverageAmount != null)
+        {
+            var product = request.Product!;
+            if (input.CoverageAmount < product.MinCoverage || input.CoverageAmount > product.MaxCoverage)
+            {
+                throw new BadRequestException(
+                    $"{product.CoverageLabel} for {product.Name} must be between {product.MinCoverage:N0} and {product.MaxCoverage:N0}.");
+            }
+
+            coverage = input.CoverageAmount.Value;
         }
 
         // Use the real database's transaction so the customer, the quote and the
@@ -136,15 +148,17 @@ public class QuoteRequestService : IQuoteRequestService
             _context.Customers.Add(customer);
         }
 
-        // Create the Draft quote with the answers the customer gave
+        // Create the Draft quote with the answers the customer gave.
+        // The agent who accepted the request owns the quote.
         var quote = new Quote
         {
             Customer = customer,
             ProductId = request.ProductId,
-            CoverageAmount = request.CoverageAmount,
+            CoverageAmount = coverage,
             RequestedEffectiveDate = request.RequestedEffectiveDate,
             Answers = request.Answers,
-            Status = QuoteStatus.Draft
+            Status = QuoteStatus.Draft,
+            CreatedBy = acceptedBy
         };
         _context.Quotes.Add(quote);
         await _context.SaveChangesAsync();
@@ -208,6 +222,12 @@ public class QuoteRequestService : IQuoteRequestService
             ProductCode = request.Product?.Code ?? "",
             ProductName = request.Product?.Name ?? "",
             CoverageAmount = request.CoverageAmount,
+            CoverageLabel = request.Product?.CoverageLabel ?? "",
+            MinCoverage = request.Product?.MinCoverage ?? 0,
+            MaxCoverage = request.Product?.MaxCoverage ?? 0,
+            CoverageBreakdown = request.CoverageBreakdown == null
+                ? null
+                : JsonSerializer.Deserialize<CoverageResult>(request.CoverageBreakdown),
             RequestedEffectiveDate = request.RequestedEffectiveDate,
             Answers = answers,
             Status = request.Status,

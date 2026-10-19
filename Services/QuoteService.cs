@@ -19,10 +19,17 @@ public class QuoteService : IQuoteService
         _policyService = policyService;
     }
 
-    public async Task<List<QuoteDto>> GetAllAsync()
+    public async Task<List<QuoteDto>> GetAllAsync(string? owner = null)
     {
-        var quotes = await _context.Quotes
-            .Include(q => q.Product)
+        var query = _context.Quotes.Include(q => q.Product).AsQueryable();
+
+        // An agent sees only their own quotes
+        if (owner != null)
+        {
+            query = query.Where(q => q.CreatedBy == owner);
+        }
+
+        var quotes = await query
             .OrderByDescending(q => q.CreatedAt)
             .ToListAsync();
 
@@ -38,7 +45,9 @@ public class QuoteService : IQuoteService
         {
             await _context.SaveChangesAsync();
         }
-        return quotes.Select(ToDto).ToList();
+
+        var names = await GetCustomerNamesAsync(quotes.Select(q => q.CustomerId));
+        return quotes.Select(q => ToDto(q, NameFor(names, q.CustomerId))).ToList();
     }
 
     public async Task<QuoteDto?> GetByIdAsync(int id)
@@ -54,11 +63,11 @@ public class QuoteService : IQuoteService
         {
             await _context.SaveChangesAsync();
         }
-        return ToDto(quote);
+        return ToDto(quote, await GetCustomerNameAsync(quote.CustomerId));
     }
 
     // Returns null when the customer does not exist
-    public async Task<QuoteDto?> CreateAsync(QuoteInputDto input)
+    public async Task<QuoteDto?> CreateAsync(QuoteInputDto input, string? createdBy = null)
     {
         var customerExists = await _context.Customers.AnyAsync(c => c.Id == input.customerId);
         if (!customerExists)
@@ -99,14 +108,15 @@ public class QuoteService : IQuoteService
             Product = product,
             Answers = JsonSerializer.Serialize(answers),
             CoverageAmount = input.CoverageAmount,
-            RequestedEffectiveDate = input.RequestedEffectiveDate
+            RequestedEffectiveDate = input.RequestedEffectiveDate,
+            CreatedBy = createdBy
         };
 
         _context.Quotes.Add(quote);
         await _context.SaveChangesAsync();
         _logger.LogInformation("Created quote {QuoteId} for customer {CustomerId}", quote.Id, quote.CustomerId);
 
-        return ToDto(quote);
+        return ToDto(quote, await GetCustomerNameAsync(quote.CustomerId));
     }
 
     public async Task<QuoteDto?> ApplyActionAsync(int id, QuoteAction action)
@@ -149,7 +159,7 @@ public class QuoteService : IQuoteService
                 throw new BadRequestException("This product is no longer available.");
             }
 
-            // --- CHANGED: check the saved answers again, against the product's CURRENT questions.
+            // Check the saved answers again, against the product's CURRENT questions.
             // The SuperUser may have added a required question since this Draft was created.
             var savedAnswers = JsonSerializer.Deserialize<Dictionary<string, string>>(quote.Answers)
                                ?? new Dictionary<string, string>();
@@ -160,7 +170,6 @@ public class QuoteService : IQuoteService
                 pair => JsonSerializer.SerializeToElement(pair.Value));
 
             var answers = AnswerValidator.Validate(product, savedAsJson);
-            // --- END OF CHANGE
 
             var result = RatingCalculator.Calculate(product, quote.CoverageAmount, answers);
 
@@ -182,7 +191,7 @@ public class QuoteService : IQuoteService
 
         _logger.LogInformation("Quote {QuoteId}: {Action} applied, status is now {Status}", quote.Id, action, quote.Status);
 
-        return ToDto(quote);
+        return ToDto(quote, await GetCustomerNameAsync(quote.CustomerId));
     }
 
     private static bool ExpireIfNeeded(Quote quote)
@@ -199,12 +208,37 @@ public class QuoteService : IQuoteService
         return false;
     }
 
-    private static QuoteDto ToDto(Quote q)
+    // One query for all the customers on a list of quotes
+    private async Task<Dictionary<int, string>> GetCustomerNamesAsync(IEnumerable<int> customerIds)
+    {
+        var ids = customerIds.Distinct().ToList();
+
+        var rows = await _context.Customers
+            .Where(c => ids.Contains(c.Id))
+            .Select(c => new { c.Id, c.FirstName, c.LastName })
+            .ToListAsync();
+
+        return rows.ToDictionary(c => c.Id, c => $"{c.FirstName} {c.LastName}");
+    }
+
+    private async Task<string> GetCustomerNameAsync(int customerId)
+    {
+        var names = await GetCustomerNamesAsync(new[] { customerId });
+        return NameFor(names, customerId);
+    }
+
+    private static string NameFor(Dictionary<int, string> names, int customerId)
+    {
+        return names.TryGetValue(customerId, out var name) ? name : $"Customer #{customerId}";
+    }
+
+    private static QuoteDto ToDto(Quote q, string customerName)
     {
         return new QuoteDto
         {
             Id = q.Id,
             CustomerId = q.CustomerId,
+            CustomerName = customerName,
             ProductCode = q.Product!.Code,
             ProductName = q.Product.Name,
             Answers = JsonSerializer.Deserialize<Dictionary<string, string>>(q.Answers)
@@ -216,6 +250,7 @@ public class QuoteService : IQuoteService
                 : JsonSerializer.Deserialize<PremiumResult>(q.PremiumBreakdown),
             RequestedEffectiveDate = q.RequestedEffectiveDate,
             Status = q.Status,
+            CreatedBy = q.CreatedBy,
             CreatedAt = q.CreatedAt,
             ExpiresAt = q.ExpiresAt
         };

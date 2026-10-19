@@ -3,7 +3,6 @@ using InsuranceApi.Models;
 using InsuranceApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 namespace InsuranceApi.Controllers;
 
@@ -19,10 +18,13 @@ public class QuotesController : ControllerBase
         _service = service;
     }
 
+    // An agent sees only their own quotes.
+    // The Underwriter and the SuperUser see all of them.
     [HttpGet]
     public async Task<ActionResult<List<QuoteDto>>> GetAll()
     {
-        var quotes = await _service.GetAllAsync();
+        var owner = User.IsInRole("Agent") ? User.Identity?.Name : null;
+        var quotes = await _service.GetAllAsync(owner);
         return Ok(quotes);
     }
 
@@ -41,7 +43,7 @@ public class QuotesController : ControllerBase
     [Authorize(Roles = "Agent")]
     public async Task<ActionResult<QuoteDto>> Create(QuoteInputDto input)
     {
-        var created = await _service.CreateAsync(input);
+        var created = await _service.CreateAsync(input, User.Identity?.Name);
         if (created == null)
         {
             return NotFound(new { error = "Customer not found." });
@@ -93,6 +95,4 @@ public class QuotesController : ControllerBase
         }
         return Ok(quote);
     }
-
-
 }

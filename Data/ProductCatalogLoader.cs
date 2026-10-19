@@ -9,6 +9,7 @@ public static class ProductCatalogLoader
     {
         if (await context.ProductCategories.AnyAsync())
         {
+            await CoverageDefaults.ApplyAsync(context);
             return;
         }
 
@@ -273,6 +274,8 @@ public static class ProductCatalogLoader
 
         context.ProductCategories.AddRange(categories);
         await context.SaveChangesAsync();
+
+        await CoverageDefaults.ApplyAsync(context);
     }
 
 

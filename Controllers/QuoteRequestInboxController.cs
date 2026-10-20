@@ -39,9 +39,6 @@ public class QuoteRequestInboxController : ControllerBase
         return Ok(request);
     }
 
-    // The body is optional. Send { "coverageAmount": 150000 } to use a different amount
-    // than the recommended one. Send nothing to use the recommended amount.
-    // The agent who accepts becomes the owner of the new quote.
     [HttpPost("{id:int}/accept")]
     public async Task<ActionResult<QuoteRequestDto>> Accept(
         int id,

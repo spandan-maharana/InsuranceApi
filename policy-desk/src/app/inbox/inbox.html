@@ -1,0 +1,190 @@
+<div class="head">
+  <h1>Inbox</h1>
+  <button type="button" class="refresh" (click)="load()">Refresh</button>
+</div>
+
+@if (notice()) {
+  <div class="notice">{{ notice() }}</div>
+}
+
+@if (loading()) {
+  <p>Loading requests...</p>
+}
+
+@if (loadError()) {
+  <div class="error">
+    <span>{{ loadError() }}</span>
+    <button type="button" class="refresh" (click)="load()">Try again</button>
+  </div>
+}
+
+@if (!loading() && !loadError()) {
+  <div class="tabs" role="tablist">
+    @for (t of tabs; track t) {
+      <button type="button" role="tab" class="tab" [class.active]="tab() === t" (click)="setTab(t)">
+        {{ t }}
+        <span class="count">{{ countFor(t) }}</span>
+      </button>
+    }
+  </div>
+
+  <div class="layout">
+    <div class="list">
+      @for (r of visible(); track r.id) {
+        <button type="button" class="item" [class.active]="r.id === selectedId()" (click)="select(r.id)">
+          <span class="item-top">
+            <strong>{{ r.firstName }} {{ r.lastName }}</strong>
+            <span class="when">{{ asUtc(r.createdAt) | date: 'MMM d, h:mm a' }}</span>
+          </span>
+          <span class="item-sub">{{ r.productName }}</span>
+          <span class="item-sub">
+            {{ r.coverageLabel }}: {{ r.coverageAmount | currency: 'USD' : 'symbol' : '1.0-0' }}
+          </span>
+        </button>
+      } @empty {
+        <p class="empty">There are no {{ tab().toLowerCase() }} requests.</p>
+      }
+    </div>
+
+    <div class="detail">
+      @if (selected(); as r) {
+        <div class="detail-head">
+          <div>
+            <h2>{{ r.firstName }} {{ r.lastName }}</h2>
+            <p class="muted">{{ r.productName }} · Request #{{ r.id }}</p>
+          </div>
+          <span class="pill" [class.accepted]="r.status === 'Accepted'" [class.declined]="r.status === 'Declined'">
+            {{ r.status }}
+          </span>
+        </div>
+
+        <dl class="facts">
+          <dt>Email</dt>
+          <dd><a [href]="'mailto:' + r.email">{{ r.email }}</a></dd>
+          <dt>Phone</dt>
+          <dd>{{ r.phoneNumber }}</dd>
+          <dt>Start date</dt>
+          <dd>{{ r.requestedEffectiveDate | date: 'mediumDate' }}</dd>
+          <dt>Submitted</dt>
+          <dd>{{ asUtc(r.createdAt) | date: 'medium' }}</dd>
+        </dl>
+
+        <h3>Answers from the customer</h3>
+        <dl class="facts">
+          @for (a of answerList(); track a.label) {
+            <dt>{{ a.label }}</dt>
+            <dd>{{ a.value }}</dd>
+          } @empty {
+            <dt>None</dt>
+            <dd>This product has no questions.</dd>
+          }
+        </dl>
+
+        <h3>Recommended coverage</h3>
+        <div class="reco">
+          <span class="reco-amount">{{ r.coverageAmount | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
+          <span class="muted">
+            {{ r.coverageLabel }} · allowed range
+            {{ r.minCoverage | currency: 'USD' : 'symbol' : '1.0-0' }} to
+            {{ r.maxCoverage | currency: 'USD' : 'symbol' : '1.0-0' }}
+          </span>
+        </div>
+
+        @if (r.coverageBreakdown; as b) {
+          <table class="steps">
+            <thead>
+              <tr>
+                <th>How it was worked out</th>
+                <th class="num">Effect</th>
+                <th class="num">Running amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (s of b.steps; track $index) {
+                <tr>
+                  <td>{{ s.description }}</td>
+                  <td class="num">
+                    @if (s.multiplier !== null) {
+                      × {{ s.multiplier | number: '1.2-2' }}
+                    }
+                  </td>
+                  <td class="num">{{ s.amount | currency: 'USD' : 'symbol' : '1.0-0' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+          @if (b.limitApplied) {
+            <p class="muted">The amount was adjusted to stay inside the product limits.</p>
+          }
+        } @else {
+          <p class="muted">No breakdown was saved for this older request.</p>
+        }
+
+        @if (r.status === 'New') {
+          <h3>Your decision</h3>
+
+          @if (!declining()) {
+            <label class="field">
+              {{ r.coverageLabel }} for the quote
+              <input type="number" [class.invalid]="!!actionError()" [value]="coverageInput()"
+                     (input)="coverageInput.set(read($event))" />
+              <small>
+                Keep the recommended amount, or change it. Allowed:
+                {{ r.minCoverage | number }} to {{ r.maxCoverage | number }}.
+              </small>
+            </label>
+
+            @if (actionError()) {
+              <p class="field-error">{{ actionError() }}</p>
+            }
+
+            <div class="actions">
+              <button type="button" class="btn primary" [disabled]="busy()" (click)="accept()">
+                {{ busy() ? 'Working...' : 'Accept and create quote' }}
+              </button>
+              <button type="button" class="btn secondary" [disabled]="busy()" (click)="startDecline()">
+                Decline
+              </button>
+            </div>
+          } @else {
+            <label class="field">
+              Reason for declining
+              <textarea rows="3" [class.invalid]="!!actionError()" [value]="reason()"
+                        (input)="reason.set(read($event))"></textarea>
+              <small>The customer's request is closed. Please give a clear reason.</small>
+            </label>
+
+            @if (actionError()) {
+              <p class="field-error">{{ actionError() }}</p>
+            }
+
+            <div class="actions">
+              <button type="button" class="btn danger" [disabled]="busy()" (click)="decline()">
+                {{ busy() ? 'Working...' : 'Confirm decline' }}
+              </button>
+              <button type="button" class="btn secondary" [disabled]="busy()" (click)="cancelDecline()">
+                Cancel
+              </button>
+            </div>
+          }
+        }
+
+        @if (r.status === 'Accepted') {
+          <p class="info">
+            Accepted on {{ asUtc(r.reviewedAt ?? r.createdAt) | date: 'medium' }}.
+            Draft quote #{{ r.quoteId }} was created for customer #{{ r.customerId }}.
+          </p>
+        }
+
+        @if (r.status === 'Declined') {
+          <p class="info">
+            Declined on {{ asUtc(r.reviewedAt ?? r.createdAt) | date: 'medium' }}.
+            Reason: {{ r.declineReason }}
+          </p>
+        }
+      } @else {
+        <p class="empty">Choose a request on the left to see its details.</p>
+      }
+    </div>
+  </div>
+}

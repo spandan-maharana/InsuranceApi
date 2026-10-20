@@ -1,0 +1,85 @@
+<h1>Choose your insurance</h1>
+<p class="intro">Pick a product to ask for a quote.</p>
+
+<div class="search">
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+       stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="7" />
+    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+  </svg>
+  <input type="search" placeholder="Search products, for example pet, travel or auto"
+         aria-label="Search products" [value]="query()" (input)="query.set(read($event))" />
+</div>
+
+@if (loading()) {
+  <p>Loading products...</p>
+}
+
+@if (error()) {
+  <p class="error">{{ error() }}</p>
+  <button class="retry" (click)="load()">Try again</button>
+}
+
+@if (categories().length > 0 && filtered().length === 0) {
+  <div class="empty">
+    <p>No products match "<strong>{{ query() }}</strong>".</p>
+    <button class="retry" (click)="query.set('')">Clear search</button>
+  </div>
+}
+
+@for (category of filtered(); track category.code) {
+  <section>
+    <div class="heading">
+      <span class="icon">
+        @switch (kindOf(category.name)) {
+          @case ('health') {
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21.2l7.8-7.7 1-1.1a5.5 5.5 0 0 0 0-7.8z" />
+            </svg>
+          }
+          @case ('life') {
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+          }
+          @case ('property') {
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+          }
+          @case ('niche') {
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+          }
+          @default {
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+            </svg>
+          }
+        }
+      </span>
+      <div>
+        <h2>{{ category.name }}</h2>
+        @if (blurbFor(category.name)) {
+          <p class="blurb">{{ blurbFor(category.name) }}</p>
+        }
+      </div>
+    </div>
+
+    <div class="cards">
+      @for (product of category.products; track product.code) {
+        <a class="card" [routerLink]="['/quote', product.code]">
+          <h3>{{ product.name }}</h3>
+          <p>{{ product.description }}</p>
+        </a>
+      }
+    </div>
+  </section>
+}

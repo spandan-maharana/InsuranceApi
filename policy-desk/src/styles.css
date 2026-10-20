@@ -1,0 +1,20 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #1f2937;
+  background: #f5f6fa;
+}
+
+button,
+input,
+select {
+  font-family: inherit;
+}

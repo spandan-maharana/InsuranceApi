@@ -1,0 +1,171 @@
+<div class="head">
+  <h1>Underwriting</h1>
+  <button type="button" class="refresh" (click)="load()">Refresh</button>
+</div>
+
+@if (notice()) {
+  <div class="notice">{{ notice() }}</div>
+}
+
+@if (loading()) {
+  <p>Loading quotes...</p>
+}
+
+@if (loadError()) {
+  <div class="error">
+    <span>{{ loadError() }}</span>
+    <button type="button" class="refresh" (click)="load()">Try again</button>
+  </div>
+}
+
+@if (!loading() && !loadError()) {
+  <div class="tabs" role="tablist">
+    @for (t of tabs; track t.key) {
+      <button type="button" role="tab" class="tab" [class.active]="tab() === t.key" (click)="setTab(t.key)">
+        {{ t.label }}
+        <span class="count">{{ countFor(t.key) }}</span>
+      </button>
+    }
+  </div>
+
+  <div class="layout">
+    <div class="list">
+      @for (q of visible(); track q.id) {
+        <button type="button" class="item" [class.active]="q.id === selectedId()" (click)="select(q.id)">
+          <span class="item-top">
+            <strong>{{ q.customerName }}</strong>
+            <span class="pill small" [attr.data-status]="q.status">{{ q.status }}</span>
+          </span>
+          <span class="item-sub">{{ q.productName }}</span>
+          <span class="item-sub">
+            Coverage {{ q.coverageAmount | currency: 'USD' : 'symbol' : '1.0-0' }}
+            @if (q.premium != null) {
+              · Premium {{ q.premium | currency: 'USD' : 'symbol' : '1.2-2' }}
+            }
+          </span>
+          <span class="item-sub when">Quote #{{ q.id }} · {{ asUtc(q.createdAt) | date: 'MMM d, h:mm a' }}</span>
+        </button>
+      } @empty {
+        <p class="empty">There are no quotes here.</p>
+      }
+    </div>
+
+    <div class="detail">
+      @if (selected(); as q) {
+        <div class="detail-head">
+          <div>
+            <h2>{{ q.customerName }}</h2>
+            <p class="muted">{{ q.productName }} · Quote #{{ q.id }}</p>
+          </div>
+          <span class="pill" [attr.data-status]="q.status">{{ q.status }}</span>
+        </div>
+
+        <p class="help">{{ statusHelp(q.status) }}</p>
+
+        <dl class="facts">
+          <dt>Sent by agent</dt>
+          <dd>{{ q.createdBy ?? 'Unknown' }}</dd>
+          <dt>Coverage</dt>
+          <dd>{{ q.coverageAmount | currency: 'USD' : 'symbol' : '1.0-0' }}</dd>
+          <dt>Start date</dt>
+          <dd>{{ q.requestedEffectiveDate | date: 'mediumDate' }}</dd>
+          <dt>Created</dt>
+          <dd>{{ asUtc(q.createdAt) | date: 'medium' }}</dd>
+          @if (q.expiresAt) {
+            <dt>Quote expires</dt>
+            <dd>{{ asUtc(q.expiresAt) | date: 'mediumDate' }}</dd>
+          }
+        </dl>
+
+        <h3>Answers from the customer</h3>
+        <dl class="facts">
+          @for (a of answerList(); track a.label) {
+            <dt>{{ a.label }}</dt>
+            <dd>{{ a.value }}</dd>
+          } @empty {
+            <dt>None</dt>
+            <dd>This product has no questions.</dd>
+          }
+        </dl>
+
+        <h3>Premium</h3>
+        @if (q.premium != null && q.premiumBreakdown; as b) {
+          <div class="reco">
+            <span class="reco-amount">{{ q.premium | currency: 'USD' : 'symbol' : '1.2-2' }}</span>
+            <span class="muted">for the policy term</span>
+          </div>
+
+          <table class="steps">
+            <thead>
+              <tr>
+                <th>How it was worked out</th>
+                <th class="num">Effect</th>
+                <th class="num">Running amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (s of b.steps; track $index) {
+                <tr>
+                  <td>{{ s.description }}</td>
+                  <td class="num">
+                    @if (s.multiplier !== null) {
+                      × {{ s.multiplier | number: '1.2-2' }}
+                    }
+                  </td>
+                  <td class="num">{{ s.amount | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+          @if (b.minimumApplied) {
+            <p class="muted">The minimum premium for this product was applied.</p>
+          }
+        } @else {
+          <p class="muted">Not priced.</p>
+        }
+
+        @if (q.status === 'Accepted' || q.status === 'Bound') {
+          <h3>Your decision</h3>
+
+          @if (!canAct()) {
+            <p class="info">Only underwriters can approve and issue quotes.</p>
+          } @else {
+            @if (actionError()) {
+              <p class="field-error">{{ actionError() }}</p>
+            }
+
+            @if (!confirmingDiscard()) {
+              <div class="actions">
+                @if (q.status === 'Accepted') {
+                  <button type="button" class="btn primary" [disabled]="busy()" (click)="approve()">
+                    {{ busy() ? 'Working...' : 'Approve quote' }}
+                  </button>
+                }
+                @if (q.status === 'Bound') {
+                  <button type="button" class="btn primary" [disabled]="busy()" (click)="issue()">
+                    {{ busy() ? 'Working...' : 'Issue policy' }}
+                  </button>
+                }
+                <button type="button" class="btn secondary" [disabled]="busy()" (click)="startDiscard()">
+                  Discard
+                </button>
+              </div>
+            } @else {
+              <p class="muted">Discard this quote? This cannot be undone.</p>
+              <div class="actions">
+                <button type="button" class="btn danger" [disabled]="busy()" (click)="discard()">
+                  {{ busy() ? 'Working...' : 'Yes, discard' }}
+                </button>
+                <button type="button" class="btn secondary" [disabled]="busy()" (click)="cancelDiscard()">
+                  Keep it
+                </button>
+              </div>
+            }
+          }
+        }
+      } @else {
+        <p class="empty">Choose a quote on the left to see its details.</p>
+      }
+    </div>
+  </div>
+}

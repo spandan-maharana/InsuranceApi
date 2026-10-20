@@ -1,0 +1,300 @@
+:host {
+  display: block;
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+.back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: #14365d;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.back:hover {
+  text-decoration: underline;
+}
+
+h1 {
+  margin: 0 0 8px;
+  color: #14365d;
+}
+
+h2 {
+  margin: 8px 0 16px;
+  font-size: 20px;
+  color: #14365d;
+}
+
+.intro {
+  margin: 0 0 20px;
+  color: #5b6573;
+}
+
+/* The progress bar at the top */
+.steps {
+  display: flex;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+}
+
+.steps li {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #8a94a3;
+}
+
+.steps li::before {
+  content: '';
+  position: absolute;
+  top: 15px;
+  right: 50%;
+  width: 100%;
+  height: 2px;
+  background: #d5dce6;
+}
+
+.steps li:first-child::before {
+  display: none;
+}
+
+.dot {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  font-weight: 700;
+  color: #5b6573;
+  background: #ffffff;
+  border: 2px solid #d5dce6;
+  border-radius: 50%;
+}
+
+.steps li.active {
+  color: #14365d;
+  font-weight: 600;
+}
+
+.steps li.active .dot {
+  color: #ffffff;
+  background: #14365d;
+  border-color: #14365d;
+}
+
+.steps li.done {
+  color: #14365d;
+}
+
+.steps li.done .dot {
+  color: #14365d;
+  background: #e3ebf5;
+  border-color: #14365d;
+}
+
+.steps li.done::before,
+.steps li.active::before {
+  background: #14365d;
+}
+
+form {
+  background: #ffffff;
+  padding: 24px 28px 28px;
+  border-radius: 10px;
+  border: 1px solid #dde3ea;
+}
+
+.row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 220px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+label.full {
+  flex: none;
+}
+
+input,
+select {
+  margin-top: 6px;
+  padding: 10px;
+  font-size: 15px;
+  border: 1px solid #b8c2cc;
+  border-radius: 6px;
+}
+
+input:focus,
+select:focus {
+  outline: 2px solid #14365d;
+  outline-offset: 1px;
+}
+
+input.invalid,
+select.invalid {
+  border-color: #b00020;
+}
+
+small {
+  margin-top: 4px;
+  font-weight: 400;
+  color: #777;
+}
+
+.star {
+  color: #b00020;
+}
+
+.field-error {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 400;
+  color: #b00020;
+}
+
+.error {
+  margin-bottom: 8px;
+  padding: 10px 12px;
+  background: #fde8ea;
+  color: #b00020;
+  border-radius: 6px;
+}
+
+/* The review screen */
+.summary {
+  margin-bottom: 14px;
+  padding: 14px 18px;
+  background: #f5f6fa;
+  border: 1px solid #dde3ea;
+  border-radius: 8px;
+}
+
+.summary-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.summary h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #14365d;
+}
+
+.link {
+  padding: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #14365d;
+  background: none;
+  border: none;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 20px;
+  margin: 10px 0 0;
+}
+
+dt {
+  color: #5b6573;
+}
+
+dd {
+  margin: 0;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.button {
+  display: inline-block;
+  padding: 12px 28px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+  background: #14365d;
+  border: 2px solid #14365d;
+  border-radius: 6px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.button:hover {
+  background: #1c4a7d;
+  border-color: #1c4a7d;
+}
+
+.button.secondary {
+  color: #14365d;
+  background: #ffffff;
+}
+
+.button.secondary:hover {
+  background: #e3ebf5;
+}
+
+.button:disabled {
+  background: #8a9bb0;
+  border-color: #8a9bb0;
+  cursor: default;
+}
+
+.thanks {
+  background: #ffffff;
+  padding: 40px 32px;
+  border-radius: 10px;
+  border: 1px solid #dde3ea;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  form {
+    padding: 18px 16px 20px;
+  }
+
+  .steps li .label {
+    display: none;
+  }
+
+  .steps li.active .label {
+    display: block;
+  }
+
+  dl {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  dd {
+    margin-bottom: 8px;
+  }
+}

@@ -145,7 +145,7 @@ public static class ProductCatalogLoader
                             Between(25, 64, 1.00m, "Adult driver"),
                             Between(65, 100, 1.20m, "Senior driver")),
                         Num("accidentsLast3Years", "Accidents in the last 3 years", 0, 10,
-                            Between(0, 0, 0.90m, "Clean record"),
+                            Between(0, 0, 0.85m, "Clean record"),
                             Between(1, 1, 1.25m, "One accident"),
                             Between(2, 10, 1.75m, "Two or more accidents")),
                         Choice("vehicleType", "Vehicle type", "Sedan,SUV,Truck,Sports car",

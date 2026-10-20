@@ -1,0 +1,170 @@
+<a routerLink="/" class="back">← All products</a>
+
+@if (loading()) {
+  <p>Loading...</p>
+}
+
+@if (loadError()) {
+  <p class="error">{{ loadError() }}</p>
+}
+
+@if (product(); as p) {
+  @if (receipt(); as r) {
+    <div class="thanks">
+      <h1>Thank you!</h1>
+      <p>{{ r.message }}</p>
+      <p>Your request number is <strong>{{ r.id }}</strong>.</p>
+      <a routerLink="/" class="button">Back to products</a>
+    </div>
+  } @else {
+    <h1>{{ p.name }}</h1>
+    <p class="intro">{{ p.description }}</p>
+
+    <ol class="steps">
+      @for (name of steps(); track name; let i = $index) {
+        <li [class.done]="i < step()" [class.active]="i === step()">
+          <span class="dot">{{ dot(i) }}</span>
+          <span class="label">{{ name }}</span>
+        </li>
+      }
+    </ol>
+
+    <form novalidate (submit)="$event.preventDefault(); advance()">
+      @switch (currentName()) {
+        @case ('About you') {
+          <h2>About you</h2>
+          <div class="row">
+            <label>First name
+              <input type="text" autocomplete="given-name" [class.invalid]="!!errorFor('firstName')"
+                     [value]="firstName()" (input)="firstName.set(read($event))" />
+              @if (errorFor('firstName')) { <span class="field-error">{{ errorFor('firstName') }}</span> }
+            </label>
+            <label>Last name
+              <input type="text" autocomplete="family-name" [class.invalid]="!!errorFor('lastName')"
+                     [value]="lastName()" (input)="lastName.set(read($event))" />
+              @if (errorFor('lastName')) { <span class="field-error">{{ errorFor('lastName') }}</span> }
+            </label>
+          </div>
+          <div class="row">
+            <label>Email
+              <input type="email" autocomplete="email" [class.invalid]="!!errorFor('email')"
+                     [value]="email()" (input)="email.set(read($event))" />
+              @if (errorFor('email')) { <span class="field-error">{{ errorFor('email') }}</span> }
+            </label>
+            <label>Phone
+              <input type="tel" autocomplete="tel" [class.invalid]="!!errorFor('phoneNumber')"
+                     [value]="phoneNumber()" (input)="phoneNumber.set(read($event))" />
+              @if (errorFor('phoneNumber')) { <span class="field-error">{{ errorFor('phoneNumber') }}</span> }
+            </label>
+          </div>
+        }
+
+        @case ('Your policy') {
+          <h2>Your policy</h2>
+          <p class="intro">
+            Your {{ p.coverageLabel.toLowerCase() }} is worked out for you from your answers.
+            An agent will review it before your quote is prepared.
+          </p>
+          <div class="row">
+            <label>Start date
+              <input type="date" [class.invalid]="!!errorFor('effectiveDate')"
+                     [value]="effectiveDate()" (input)="effectiveDate.set(read($event))" />
+              @if (errorFor('effectiveDate')) { <span class="field-error">{{ errorFor('effectiveDate') }}</span> }
+            </label>
+          </div>
+        }
+
+        @case ('Questions') {
+          <h2>A few questions</h2>
+          @for (q of p.questions; track q.key) {
+            <label class="full">
+              {{ q.label }}@if (q.isRequired) { <span class="star">*</span> }
+              @if (q.type === 'Choice') {
+                <select [class.invalid]="!!errorFor('q_' + q.key)" (change)="setAnswer(q.key, $event)">
+                  <option value="">Choose...</option>
+                  @for (o of q.options ?? []; track o) {
+                    <option [value]="o" [selected]="answers()[q.key] === o">{{ o }}</option>
+                  }
+                </select>
+              } @else {
+                <input type="number" [class.invalid]="!!errorFor('q_' + q.key)"
+                       [value]="answers()[q.key] ?? ''" (input)="setAnswer(q.key, $event)" />
+                @if (q.minValue !== null && q.maxValue !== null) {
+                  <small>Between {{ q.minValue }} and {{ q.maxValue }}</small>
+                }
+              }
+              @if (errorFor('q_' + q.key)) { <span class="field-error">{{ errorFor('q_' + q.key) }}</span> }
+            </label>
+          }
+        }
+
+        @case ('Review') {
+          <h2>Please check your details</h2>
+
+          <div class="summary">
+            <div class="summary-head">
+              <h3>About you</h3>
+              <button type="button" class="link" (click)="goTo('About you')">Edit</button>
+            </div>
+            <dl>
+              <dt>Name</dt><dd>{{ firstName() }} {{ lastName() }}</dd>
+              <dt>Email</dt><dd>{{ email() }}</dd>
+              <dt>Phone</dt><dd>{{ phoneNumber() }}</dd>
+            </dl>
+          </div>
+
+          <div class="summary">
+            <div class="summary-head">
+              <h3>Your policy</h3>
+              <button type="button" class="link" (click)="goTo('Your policy')">Edit</button>
+            </div>
+            <dl>
+              <dt>Start date</dt><dd>{{ effectiveDate() | date: 'mediumDate' }}</dd>
+            </dl>
+          </div>
+
+          @if (p.questions.length > 0) {
+            <div class="summary">
+              <div class="summary-head">
+                <h3>Your answers</h3>
+                <button type="button" class="link" (click)="goTo('Questions')">Edit</button>
+              </div>
+              <dl>
+                @for (q of p.questions; track q.key) {
+                  <dt>{{ q.label }}</dt><dd>{{ answerFor(q.key) }}</dd>
+                }
+              </dl>
+            </div>
+          }
+
+          @if (submitErrors().length > 0) {
+            <div class="error">
+              <strong>Please fix these:</strong>
+              <ul>
+                @for (message of submitErrors(); track message) {
+                  <li>{{ message }}</li>
+                }
+              </ul>
+            </div>
+          }
+        }
+      }
+
+      <div class="actions">
+        @if (step() > 0) {
+          <button type="button" class="button secondary" (click)="back()">Back</button>
+        } @else {
+          <span></span>
+        }
+
+        @if (currentName() === 'Review') {
+          <button type="submit" class="button" [disabled]="submitting()">
+            {{ submitting() ? 'Sending...' : 'Get Quote' }}
+          </button>
+        } @else {
+          <button type="submit" class="button">Next</button>
+        }
+      </div>
+    </form>
+  }
+}

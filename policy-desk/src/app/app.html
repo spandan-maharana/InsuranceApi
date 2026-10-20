@@ -1,0 +1,61 @@
+<header class="top">
+  <div class="top-inner">
+    <a routerLink="/" class="brand">
+      <span class="title">Policy Desk</span>
+      <span class="subtitle">Get an insurance quote, or manage requests as an agent</span>
+    </a>
+
+    <nav>
+      @if (auth.isLoggedIn()) {
+        @if (auth.role() === 'SuperUser') {
+          <a routerLink="/admin" class="nav-link">Administration</a>
+        }
+        @if (canUseInbox()) {
+          <a routerLink="/dashboard" class="nav-link">Dashboard</a>
+          <a routerLink="/quotes" class="nav-link">Quotes</a>
+        }
+        @if (canUseUnderwriting()) {
+          <a routerLink="/underwriting" class="nav-link">Underwriting</a>
+        }
+        @if (canUseInbox()) {
+          <a routerLink="/inbox" class="mail"
+             [attr.aria-label]="'Inbox, ' + newCount() + ' new requests'" title="Inbox">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="5" width="18" height="14" rx="2" />
+              <path d="m3 7 9 6 9-6" />
+            </svg>
+            @if (newCount() > 0) {
+              <span class="badge">{{ newCount() > 99 ? '99+' : newCount() }}</span>
+            }
+          </a>
+        }
+        <span class="who" [attr.title]="auth.role()">{{ auth.displayName() }}</span>
+        <button type="button" class="btn btn-outline" (click)="auth.logout()">Log out</button>
+      } @else if (onLoginPage()) {
+        <a routerLink="/" class="btn btn-solid btn-icon" aria-label="Back to the front page">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 11.5 12 4l9 7.5" />
+            <path d="M5 10v10h5v-6h4v6h5V10" />
+          </svg>
+          Home
+        </a>
+      } @else {
+        <a routerLink="/login" class="btn btn-solid">Staff login</a>
+      }
+    </nav>
+  </div>
+</header>
+
+<main class="page">
+  <router-outlet />
+</main>
+
+<footer class="foot">
+  <div class="foot-inner">
+    <strong>Policy Desk</strong>
+    <span>Questions? support&#64;policydesk.example</span>
+    <span>This is a demo application. Please do not enter real personal information.</span>
+  </div>
+</footer>

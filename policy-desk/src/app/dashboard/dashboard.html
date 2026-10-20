@@ -1,0 +1,86 @@
+@if (loading()) {
+  <p>Loading your dashboard...</p>
+}
+
+@if (error()) {
+  <div class="error">
+    <span>{{ error() }}</span>
+    <button type="button" class="retry" (click)="load()">Try again</button>
+  </div>
+}
+
+@if (data(); as d) {
+  <section class="hero">
+    <h1>Welcome, {{ auth.displayName() }}</h1>
+    @if (auth.role() === 'SuperUser') {
+      <p class="sub">You are viewing the quotes of every agent.</p>
+    } @else {
+      <p class="sub">Here is how your quotes are doing.</p>
+    }
+  </section>
+
+  <div class="kpis">
+    <a routerLink="/inbox" class="kpi kpi-link">
+      <span class="kpi-label">New requests</span>
+      <span class="kpi-value">{{ d.newRequests | number }}</span>
+      <span class="kpi-note">Waiting in your inbox</span>
+    </a>
+
+    <div class="kpi">
+      <span class="kpi-label">Quotes in draft</span>
+      <span class="kpi-value">{{ d.draftQuotes | number }}</span>
+      <span class="kpi-note">Accepted from the inbox, not priced yet</span>
+    </div>
+
+    <div class="kpi">
+      <span class="kpi-label">Quotes issued</span>
+      <span class="kpi-value">{{ d.issuedQuotes | number }}</span>
+      <span class="kpi-note">Now active policies</span>
+    </div>
+  </div>
+
+  <section class="panel">
+    <h2>Issued quotes</h2>
+
+    @if (d.issuedPolicies.length === 0) {
+      <p class="empty">No quotes have been issued yet.</p>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Policy number</th>
+              <th>Customer</th>
+              <th>Product</th>
+              <th class="num">Coverage</th>
+              <th class="num">Premium</th>
+              <th>Effective</th>
+              <th>Expires</th>
+              <th>Issued</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of d.issuedPolicies; track row.policyNumber) {
+              <tr>
+                <td class="strong">{{ row.policyNumber }}</td>
+                <td>{{ row.customerName }}</td>
+                <td>{{ row.productName }}</td>
+                <td class="num">{{ row.coverageAmount | currency: 'USD' : 'symbol' : '1.0-0' }}</td>
+                <td class="num">{{ row.premium | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
+                <td>{{ row.effectiveDate | date: 'mediumDate' }}</td>
+                <td>{{ row.expirationDate | date: 'mediumDate' }}</td>
+                <td>{{ asUtc(row.issuedAt) | date: 'mediumDate' }}</td>
+                <td>
+                  <span class="pill" [class.cancelled]="row.policyStatus === 'Cancelled'">
+                    {{ row.policyStatus }}
+                  </span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+}

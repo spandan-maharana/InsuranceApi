@@ -1,0 +1,266 @@
+<section class="admin">
+  <h1>Administration</h1>
+  <p class="lead">Welcome, {{ auth.displayName() }}. Everything across all agents, and your staff accounts.</p>
+
+  <div class="tabs" role="tablist">
+    <button type="button" role="tab" class="tab" [class.active]="tab() === 'overview'"
+            [attr.aria-selected]="tab() === 'overview'" (click)="show('overview')">
+      Overview
+    </button>
+    <button type="button" role="tab" class="tab" [class.active]="tab() === 'users'"
+            [attr.aria-selected]="tab() === 'users'" (click)="show('users')">
+      Users
+    </button>
+  </div>
+
+  @if (tab() === 'overview') {
+    @if (overviewError()) {
+      <p class="error" role="alert">{{ overviewError() }}</p>
+    }
+
+    @if (overview(); as o) {
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-label">New requests</span>
+          <span class="stat-value">{{ o.newRequests }}</span>
+          <span class="stat-note">Waiting in the agents' inbox</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Open quotes</span>
+          <span class="stat-value">{{ o.openQuotes }}</span>
+          <span class="stat-note">Not yet issued or closed</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Policies issued</span>
+          <span class="stat-value">{{ o.issuedPolicies }}</span>
+          <span class="stat-note">Active policies</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Premium issued</span>
+          <span class="stat-value">{{ o.premiumIssued | currency }}</span>
+          <span class="stat-note">Across active policies</span>
+        </div>
+      </div>
+
+      <div class="two">
+        <div class="panel">
+          <h2>Quote requests</h2>
+          <ul class="rows">
+            <li><span>New</span><strong>{{ o.newRequests }}</strong></li>
+            <li><span>Accepted by an agent</span><strong>{{ o.acceptedRequests }}</strong></li>
+            <li><span>Declined</span><strong>{{ o.declinedRequests }}</strong></li>
+          </ul>
+        </div>
+
+        <div class="panel">
+          <h2>Quotes by status</h2>
+          <ul class="bars">
+            @for (s of o.quotesByStatus; track s.status) {
+              <li>
+                <span class="bar-name">{{ s.status }}</span>
+                <span class="bar-track">
+                  <span class="bar-fill" [style.width.%]="barWidth(s.count)"></span>
+                </span>
+                <strong class="bar-count">{{ s.count }}</strong>
+              </li>
+            }
+          </ul>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Agents</h2>
+        @if (o.agents.length === 0) {
+          <p class="muted">No quotes yet.</p>
+        } @else {
+          <div class="scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Agent</th>
+                  <th class="num">Quotes</th>
+                  <th class="num">Open</th>
+                  <th class="num">Issued</th>
+                  <th class="num">Premium issued</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (a of o.agents; track a.agent) {
+                  <tr>
+                    <td>{{ a.agent }}</td>
+                    <td class="num">{{ a.totalQuotes }}</td>
+                    <td class="num">{{ a.openQuotes }}</td>
+                    <td class="num">{{ a.issuedQuotes }}</td>
+                    <td class="num">{{ a.premiumIssued | currency }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+
+      <div class="panel">
+        <h2>Latest policies</h2>
+        @if (o.recentPolicies.length === 0) {
+          <p class="muted">No policies issued yet.</p>
+        } @else {
+          <div class="scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Policy number</th>
+                  <th>Customer</th>
+                  <th>Product</th>
+                  <th class="num">Coverage</th>
+                  <th class="num">Premium</th>
+                  <th>Issued</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (p of o.recentPolicies; track p.id) {
+                  <tr>
+                    <td>{{ p.policyNumber }}</td>
+                    <td>{{ p.customerName }}</td>
+                    <td>{{ p.productName }}</td>
+                    <td class="num">{{ p.coverageAmount | currency }}</td>
+                    <td class="num">{{ p.premium | currency }}</td>
+                    <td>{{ p.issuedAt | date: 'MMM d, y' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    } @else if (!overviewError()) {
+      <p class="muted">Loading...</p>
+    }
+  }
+
+  @if (tab() === 'users') {
+    <div class="panel">
+      <h2>Add a staff member</h2>
+      <p class="muted">Create a login for a new agent or underwriter.</p>
+
+      <form class="form" (submit)="createUser($event)">
+        <label class="field">
+          Full name
+          <input type="text" [value]="newName()" (input)="newName.set(read($event))" />
+        </label>
+
+        <label class="field">
+          Username
+          <input type="text" autocomplete="off" [value]="newUsername()"
+                 (input)="newUsername.set(read($event))" />
+        </label>
+
+        <label class="field">
+          Role
+          <select [value]="newRole()" (change)="newRole.set(read($event))">
+            <option value="Agent">Agent</option>
+            <option value="Underwriter">Underwriter</option>
+          </select>
+        </label>
+
+        <label class="field">
+          Password
+          <input type="password" autocomplete="new-password" [value]="newPassword()"
+                 (input)="newPassword.set(read($event))" />
+        </label>
+
+        <p class="hint">
+          Username: 3 to 30 letters, numbers, dot, dash or underscore. Password: at least 8
+          characters with a letter and a number.
+        </p>
+
+        @if (formError()) {
+          <p class="error" role="alert">{{ formError() }}</p>
+        }
+        @if (formMessage()) {
+          <p class="success" role="status">{{ formMessage() }}</p>
+        }
+
+        <button type="submit" class="a-btn a-solid"
+                [disabled]="creating() || !newName().trim() || !newUsername().trim() || !newPassword()">
+          {{ creating() ? 'Adding...' : 'Add staff member' }}
+        </button>
+      </form>
+    </div>
+
+    <div class="panel">
+      <h2>Staff accounts</h2>
+
+      @if (usersError()) {
+        <p class="error" role="alert">{{ usersError() }}</p>
+      }
+      @if (tableMessage()) {
+        <p class="success" role="status">{{ tableMessage() }}</p>
+      }
+
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Username</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (u of users(); track u.id) {
+              <tr>
+                <td>{{ u.displayName }}</td>
+                <td>{{ u.username }}</td>
+                <td>{{ roleName(u.role) }}</td>
+                <td>
+                  @if (u.isActive) {
+                    <span class="pill pill-on">Active</span>
+                  } @else {
+                    <span class="pill pill-off">Switched off</span>
+                  }
+                </td>
+                <td>{{ u.createdAt | date: 'MMM d, y' }}</td>
+                <td>
+                  @if (resetId() === u.id) {
+                    <div class="reset">
+                      <input type="password" placeholder="New password" autocomplete="new-password"
+                             [value]="resetPassword()" (input)="resetPassword.set(read($event))" />
+                      <button type="button" class="a-btn a-solid a-small"
+                              [disabled]="rowBusy() === u.id || !resetPassword()"
+                              (click)="saveReset(u)">Save</button>
+                      <button type="button" class="a-btn a-outline a-small"
+                              (click)="cancelReset()">Cancel</button>
+                    </div>
+                    @if (resetError()) {
+                      <p class="error small" role="alert">{{ resetError() }}</p>
+                    }
+                  } @else {
+                    <div class="actions">
+                      <button type="button" class="a-btn a-outline a-small"
+                              (click)="startReset(u)">Reset password</button>
+                      @if (u.role !== 'SuperUser') {
+                        @if (u.isActive) {
+                          <button type="button" class="a-btn a-danger a-small"
+                                  [disabled]="rowBusy() === u.id"
+                                  (click)="setActive(u, false)">Switch off</button>
+                        } @else {
+                          <button type="button" class="a-btn a-outline a-small"
+                                  [disabled]="rowBusy() === u.id"
+                                  (click)="setActive(u, true)">Switch on</button>
+                        }
+                      }
+                    </div>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+</section>

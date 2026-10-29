@@ -9,7 +9,7 @@ namespace InsuranceApi.Tests;
 
 public class QuoteLifeCycleTests
 {
-    // ---------- MOVES THAT ARE ALLOWED (7 of them) ----------
+    // ---------- MOVES THAT ARE ALLOWED (8 of them) ----------
     // Format: action, status the quote is in now, status it should become
 
     [Theory]
@@ -20,6 +20,7 @@ public class QuoteLifeCycleTests
     [InlineData(QuoteAction.Discard, QuoteStatus.Draft, QuoteStatus.Discarded)]
     [InlineData(QuoteAction.Discard, QuoteStatus.Quoted, QuoteStatus.Discarded)]
     [InlineData(QuoteAction.Discard, QuoteStatus.Accepted, QuoteStatus.Discarded)]
+    [InlineData(QuoteAction.Discard, QuoteStatus.Bound, QuoteStatus.Discarded)]
     public void Allowed_move_gives_the_new_status(QuoteAction action, QuoteStatus current, QuoteStatus expected)
     {
         Assert.True(QuoteLifeCycle.CanApply(action, current));
@@ -36,7 +37,6 @@ public class QuoteLifeCycleTests
     [InlineData(QuoteAction.Bind, QuoteStatus.Draft)]
     [InlineData(QuoteAction.Bind, QuoteStatus.Quoted)]
     [InlineData(QuoteAction.Issue, QuoteStatus.Accepted)]  // issuing before Bound
-    [InlineData(QuoteAction.Discard, QuoteStatus.Bound)]
     [InlineData(QuoteAction.Discard, QuoteStatus.Issued)]    // too late, cancel the policy instead
     public void Blocked_move_throws_ConflictException(QuoteAction action, QuoteStatus current)
     {

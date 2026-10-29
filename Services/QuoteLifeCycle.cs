@@ -11,7 +11,7 @@ public static class QuoteLifeCycle //Class container Start
         [QuoteAction.Accept] = new[] {QuoteStatus.Quoted},
         [QuoteAction.Bind] = new[] {QuoteStatus.Accepted},
         [QuoteAction.Issue] = new[] {QuoteStatus.Bound},
-        [QuoteAction.Discard] = new[] {QuoteStatus.Draft, QuoteStatus.Quoted, QuoteStatus.Accepted}
+        [QuoteAction.Discard] = new[] {QuoteStatus.Draft, QuoteStatus.Quoted, QuoteStatus.Accepted, QuoteStatus.Bound}
 
     };
 

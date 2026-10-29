@@ -69,7 +69,6 @@ public class CustomersController : ControllerBase
     }
 }
 
-
 /* Status Codes:
  * 200 OK: The request was successful, and the response contains the requested data.
  * 201 Created: The request was successful, and a new resource was created as a result. This is typically used in response to POST requests.

@@ -6,6 +6,7 @@ import {
   Category,
   DashboardData,
   NewRequestCount,
+  PolicyItem,
   ProductDetail,
   QuoteItem,
   QuoteRequestItem,
@@ -127,4 +128,20 @@ export class ApiService {
       .post<QuoteItem>(`${this.baseUrl}/api/quotes/${id}/issue`, {})
       .pipe(map(tidy));
   }
+
+  // ----- Policies -----
+getPolicies(): Observable<PolicyItem[]> {
+    return this.http.get<PolicyItem[]>(`${this.baseUrl}/api/policies`);
+  }
+
+  // Creates the next term (Term + 1) of the same policy
+  renewPolicy(id: number): Observable<PolicyItem> {
+    return this.http.post<PolicyItem>(`${this.baseUrl}/api/policies/${id}/renew`, {});
+  }
+
+  // Soft cancel: the row stays, its status changes
+  cancelPolicy(id: number): Observable<PolicyItem> {
+    return this.http.post<PolicyItem>(`${this.baseUrl}/api/policies/${id}/cancel`, {});
+  }
 }
+

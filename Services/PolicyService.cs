@@ -20,7 +20,10 @@ public class PolicyService : IPolicyService
 
     public async Task<List<PolicyDto>> GetAllAsync(int? segment)
     {
-        var query = _context.Policies.Include(p => p.Product).AsQueryable();
+        var query = _context.Policies
+            .Include(p => p.Product)
+            .Include(p => p.Customer)
+            .AsQueryable();
 
         if (segment != null)
         {
@@ -39,6 +42,7 @@ public class PolicyService : IPolicyService
     {
         var policy = await _context.Policies
             .Include(p => p.Product)
+            .Include(p => p.Customer)
             .FirstOrDefaultAsync(p => p.Id == id);
         return policy == null ? null : ToDto(policy);
     }
@@ -47,6 +51,7 @@ public class PolicyService : IPolicyService
     {
         var policy = await _context.Policies
             .Include(p => p.Product)
+            .Include(p => p.Customer)
             .FirstOrDefaultAsync(p => p.QuoteId == quoteId && p.Term == 0);
         return policy == null ? null : ToDto(policy);
     }
@@ -85,6 +90,7 @@ public class PolicyService : IPolicyService
     {
         var old = await _context.Policies
             .Include(p => p.Product)
+            .Include(p => p.Customer)
             .FirstOrDefaultAsync(p => p.Id == id);
         if (old == null) { return null; }
 
@@ -108,6 +114,7 @@ public class PolicyService : IPolicyService
             Term = nextTerm,
             PolicyNumber = BuildNumber(old.Segment, nextTerm),
             CustomerId = old.CustomerId,
+            Customer = old.Customer,
             QuoteId = old.QuoteId,
             ProductId = old.ProductId,
             Product = old.Product,
@@ -129,6 +136,7 @@ public class PolicyService : IPolicyService
     {
         var policy = await _context.Policies
             .Include(p => p.Product)
+            .Include(p => p.Customer)
             .FirstOrDefaultAsync(p => p.Id == id);
         if (policy == null) { return null; }
 
@@ -160,6 +168,7 @@ public class PolicyService : IPolicyService
             Segment = p.Segment,
             Term = p.Term,
             CustomerId = p.CustomerId,
+            CustomerName = p.Customer != null ? $"{p.Customer.FirstName} {p.Customer.LastName}" : "",
             QuoteId = p.QuoteId,
             ProductCode = p.Product!.Code,
             ProductName = p.Product.Name,

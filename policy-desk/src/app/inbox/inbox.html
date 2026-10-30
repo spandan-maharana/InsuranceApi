@@ -122,6 +122,10 @@
 
         @if (r.status === 'New') {
           <h3>Your decision</h3>
+          
+          @if (!canEdit()) {
+            <p class="info">Only agents can accept or decline requests.</p>
+          } @else {
 
           @if (!declining()) {
             <label class="field">
@@ -168,6 +172,7 @@
             </div>
           }
         }
+      }
 
         @if (r.status === 'Accepted') {
           <p class="info">

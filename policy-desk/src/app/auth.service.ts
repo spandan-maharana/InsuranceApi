@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
+import { API_BASE_URL } from './api-config';
 
 export interface LoginResponse {
   token: string;
@@ -23,7 +24,6 @@ const STORAGE_KEY = 'policy-desk-session';
 export class AuthService {
   private http = inject(HttpClient);
   private router = inject(Router);
-  private baseUrl = 'https://localhost:7073';
 
   private session = signal<Session | null>(this.loadSession());
 
@@ -35,7 +35,7 @@ export class AuthService {
 
   login(username: string, password: string): Observable<LoginResponse> {
     return this.http
-      .post<LoginResponse>(`${this.baseUrl}/api/auth/login`, { username, password })
+      .post<LoginResponse>(`${API_BASE_URL}/api/auth/login`, { username, password })
       .pipe(
         tap((response) => {
           const session: Session = {

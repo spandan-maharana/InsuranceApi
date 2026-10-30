@@ -39,6 +39,7 @@ public class QuoteRequestInboxController : ControllerBase
         return Ok(request);
     }
 
+    [Authorize(Roles = "Agent")]
     [HttpPost("{id:int}/accept")]
     public async Task<ActionResult<QuoteRequestDto>> Accept(
         int id,
@@ -53,6 +54,7 @@ public class QuoteRequestInboxController : ControllerBase
         return Ok(request);
     }
 
+    [Authorize(Roles = "Agent")]
     [HttpPost("{id:int}/decline")]
     public async Task<ActionResult<QuoteRequestDto>> Decline(int id, [FromBody] DeclineRequestDto input)
     {

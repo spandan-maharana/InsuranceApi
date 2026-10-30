@@ -10,6 +10,7 @@ import { QuoteRequest } from './quote-request/quote-request';
 import { Quotes } from './quotes/quotes';
 import { underwriterGuard } from './underwriter.guard';
 import { Underwriting } from './underwriting/underwriting';
+import {Policies} from './policies/policies';
 
 export const routes: Routes = [
   { path: '', component: Home },
@@ -19,5 +20,6 @@ export const routes: Routes = [
   { path: 'dashboard', component: Dashboard, canActivate: [agentGuard] },
   { path: 'inbox', component: Inbox, canActivate: [agentGuard] },
   { path: 'quotes', component: Quotes, canActivate: [agentGuard] },
+  {path: 'policies', component: Policies, canActivate: [agentGuard]},
   { path: 'underwriting', component: Underwriting, canActivate: [underwriterGuard] },
 ];

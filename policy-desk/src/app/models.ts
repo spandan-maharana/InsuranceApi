@@ -154,3 +154,23 @@ export interface QuoteItem {
   createdAt: string;
   expiresAt: string | null;
 }
+
+//----- Policies -----
+export interface PolicyItem{
+  id: number;
+  policyNumber: string;
+  segment: number;
+  term: number;
+  customerId: number;
+  customerName: string;
+  quoteId: number;
+  productCode: string;
+  productName: string;
+  coverageAmount: number;
+  premium: number;
+  effectiveDate: string;
+  expirationDate: string;
+  status: string;
+  cancelledAt: string | null;
+  createdAt: string;
+}

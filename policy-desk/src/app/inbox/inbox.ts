@@ -45,6 +45,7 @@ export class Inbox implements OnInit {
 
   tab = signal<RequestStatus>('New');
   selectedId = signal<number | null>(null);
+  canEdit = computed(() => this.auth.role() === 'Agent');
 
   // The decision form
   coverageInput = signal('');

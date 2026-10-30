@@ -9,6 +9,7 @@ public class PolicyDto
     public int Segment { get; set; }
     public int Term { get; set; }
     public int CustomerId { get; set; }
+    public string CustomerName { get; set; } = "";
     public int QuoteId { get; set; }
     public string ProductCode { get; set; } = "";
     public string ProductName { get; set; } = "";

@@ -1,0 +1,123 @@
+<div class="head">
+  <h1>Policies</h1>
+  <button type="button" class="refresh" (click)="load()">Refresh</button>
+</div>
+
+@if (notice()) {
+  <div class="notice">{{ notice() }}</div>
+}
+
+@if (loading()) {
+  <p>Loading policies...</p>
+}
+
+@if (loadError()) {
+  <div class="error">
+    <span>{{ loadError() }}</span>
+    <button type="button" class="refresh" (click)="load()">Try again</button>
+  </div>
+}
+
+@if (!loading() && !loadError()) {
+  <div class="tabs" role="tablist">
+    @for (t of tabs; track t) {
+      <button type="button" role="tab" class="tab" [class.active]="tab() === t" (click)="setTab(t)">
+        {{ t }}
+        <span class="count">{{ countFor(t) }}</span>
+      </button>
+    }
+  </div>
+
+  <div class="layout">
+    <div class="list">
+      @for (p of visible(); track p.id) {
+        <button type="button" class="item" [class.active]="p.id === selectedId()" (click)="select(p.id)">
+          <span class="item-top">
+            <strong>{{ p.policyNumber }}</strong>
+            <span class="when">Term {{ p.term }}</span>
+          </span>
+          <span class="item-sub">{{p.customerName}} · {{ p.productName }}</span>
+          <span class="item-sub">
+            Coverage {{ p.coverageAmount | currency: 'USD' : 'symbol' : '1.0-0' }} ·
+            Premium {{ p.premium | currency: 'USD' }}
+          </span>
+        </button>
+      } @empty {
+        <p class="empty">There are no {{ tab().toLowerCase() }} policies.</p>
+      }
+    </div>
+
+    <div class="detail">
+      @if (selected(); as p) {
+        <div class="detail-head">
+          <div>
+            <h2>{{ p.policyNumber }}</h2>
+            <p class="muted">{{ p.productName }} · Term {{ p.term }}</p>
+          </div>
+          <span class="pill" [class.cancelled]="p.status === 'Cancelled'">{{ p.status }}</span>
+        </div>
+
+        <dl class="facts">
+          <dt>Customer</dt>
+          <dd>{{ p.customerName }}</dd>
+          <dt>From quote</dt>
+          <dd>#{{ p.quoteId }}</dd>
+          <dt>Coverage</dt>
+          <dd>{{ p.coverageAmount | currency: 'USD' : 'symbol' : '1.0-0' }}</dd>
+          <dt>Premium</dt>
+          <dd>{{ p.premium | currency: 'USD' }}</dd>
+          <dt>Starts</dt>
+          <dd>{{ p.effectiveDate | date: 'mediumDate' }}</dd>
+          <dt>Ends</dt>
+          <dd>{{ p.expirationDate | date: 'mediumDate' }}</dd>
+          @if (p.cancelledAt) {
+            <dt>Cancelled</dt>
+            <dd>{{ asUtc(p.cancelledAt) | date: 'medium' }}</dd>
+          }
+        </dl>
+
+        @if (p.status === 'Issued') {
+          <h3>What next?</h3>
+
+          @if (!canEdit()) {
+            <p class="info">Only agents can renew or cancel policies.</p>
+          } @else {
+            @if (actionError()) {
+              <p class="field-error">{{ actionError() }}</p>
+            }
+
+            @if (!confirmingCancel()) {
+              <div class="actions">
+                @if (canRenew(p)) {
+                  <button type="button" class="btn primary" [disabled]="busy()" (click)="renew()">
+                    {{ busy() ? 'Working...' : 'Renew Policy' }}
+                  </button>
+                }
+                <button type="button" class="btn secondary" [disabled]="busy()" (click)="startCancel()">
+                  Cancel Policy
+                </button>
+              </div>
+              @if (!canRenew(p)) {
+                <p class="muted">This policy has already been renewed.</p>
+              }
+            } @else {
+              <p class="info">Cancel {{ p.policyNumber }}? This cannot be undone.</p>
+              <div class="actions">
+                <button type="button" class="btn danger" [disabled]="busy()" (click)="cancel()">
+                  {{ busy() ? 'Working...' : 'Yes, cancel policy' }}
+                </button>
+                <button type="button" class="btn secondary" [disabled]="busy()" (click)="keepPolicy()">
+                  Keep policy
+                </button>
+              </div>
+            }
+          }
+        } @else {
+          <p class="info">This policy was cancelled. No more actions are possible.</p>
+        }
+      } @else {
+        <p class="empty">Choose a policy on the left to see its details.</p>
+      }
+    </div>
+  </div>
+}

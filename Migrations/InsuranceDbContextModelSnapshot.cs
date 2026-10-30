@@ -176,6 +176,12 @@ namespace InsuranceApi.Migrations
                     b.Property<int>("QuoteId")
                         .HasColumnType("int");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
                     b.Property<int>("Segment")
                         .HasColumnType("int");
 
@@ -412,6 +418,12 @@ namespace InsuranceApi.Migrations
 
                     b.Property<DateOnly>("RequestedEffectiveDate")
                         .HasColumnType("date");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
 
                     b.Property<string>("Status")
                         .IsRequired()

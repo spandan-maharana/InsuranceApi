@@ -1,4 +1,5 @@
-﻿using InsuranceApi.Services;
+﻿using Microsoft.EntityFrameworkCore;
+using InsuranceApi.Services;
 
 namespace InsuranceApi.Middleware;
 
@@ -33,6 +34,12 @@ public class ExceptionHandlingMiddleware
         {
             context.Response.StatusCode = StatusCodes.Status409Conflict;
             await context.Response.WriteAsJsonAsync(new { error = ex.Message });
+        }
+        catch (DbUpdateConcurrencyException ex) //Catching the Concurrent Transactions and returning a 409 Conflict status code with the error message.
+        {
+            _logger.LogWarning(ex, "Concurreny Conflict");
+            context.Response.StatusCode = StatusCodes.Status409Conflict;
+            await context.Response.WriteAsJsonAsync(new { error = "This record was changed recently by another user. Please refresh and try again." });
         }
         catch (Exception ex) // Catching any other unhandled exceptions and returning a 500 Internal Server Error status code with a generic error message.
         {

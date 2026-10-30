@@ -1,4 +1,6 @@
-﻿namespace InsuranceApi.Models;
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace InsuranceApi.Models;
 
 public class Policy
 {
@@ -20,5 +22,7 @@ public class Policy
     public DateTime? CancelledAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    [Timestamp]
+    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 }
 

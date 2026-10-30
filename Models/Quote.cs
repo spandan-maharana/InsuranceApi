@@ -20,4 +20,6 @@ public class Quote
     public DateTime? ExpiresAt { get; set; } //Expiry time can be empty
     [MaxLength(100)]
     public string? CreatedBy { get; set; }
+    [Timestamp]
+    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 }

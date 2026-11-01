@@ -13,5 +13,5 @@ public interface IQuoteService
     // Returns null when the customer does not exist
     Task<QuoteDto?> CreateAsync(QuoteInputDto input, string? createdBy = null);
 
-    Task<QuoteDto?> ApplyActionAsync(int id, QuoteAction action);
+    Task<QuoteDto?> ApplyActionAsync(int id, QuoteAction action, string? performedBy = null);
 }

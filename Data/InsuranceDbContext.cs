@@ -11,6 +11,7 @@ public class InsuranceDbContext : DbContext
 
     public DbSet<Quote> Quotes => Set<Quote>();
     public DbSet<Policy> Policies => Set<Policy>();
+    public DbSet<PolicyTransaction> PolicyTransactions => Set<PolicyTransaction>();
     public DbSet<ProductCategory> ProductCategories => Set<ProductCategory>();
     public DbSet<Product> Products => Set<Product>();
     public DbSet<ProductQuestion> ProductQuestions => Set<ProductQuestion>();
@@ -76,6 +77,19 @@ public class InsuranceDbContext : DbContext
             entity.HasOne(p => p.Product)
                   .WithMany()
                   .HasForeignKey(p => p.ProductId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PolicyTransaction>(entity =>
+        {
+            entity.Property(t => t.Type).HasConversion<string>().HasMaxLength(20);
+            entity.Property(t => t.PerformedBy).HasMaxLength(100);
+
+            entity.HasIndex(t => t.PolicyId);
+
+            entity.HasOne(t => t.Policy)
+                  .WithMany()
+                  .HasForeignKey(t => t.PolicyId)
                   .OnDelete(DeleteBehavior.Restrict);
         });
 

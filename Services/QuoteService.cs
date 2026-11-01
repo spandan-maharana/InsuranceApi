@@ -119,7 +119,7 @@ public class QuoteService : IQuoteService
         return ToDto(quote, await GetCustomerNameAsync(quote.CustomerId));
     }
 
-    public async Task<QuoteDto?> ApplyActionAsync(int id, QuoteAction action)
+    public async Task<QuoteDto?> ApplyActionAsync(int id, QuoteAction action, string? performedBy = null)
     {
         var quote = await _context.Quotes
             .Include(q => q.Product)
@@ -184,7 +184,7 @@ public class QuoteService : IQuoteService
         // When the quote is Issued, the policy is created in the same save
         if (action == QuoteAction.Issue)
         {
-            await _policyService.CreateFromQuoteAsync(quote);
+            await _policyService.CreateFromQuoteAsync(quote, performedBy);
         }
 
         await _context.SaveChangesAsync();

@@ -88,7 +88,7 @@ public class QuotesController : ControllerBase
 
     private async Task<ActionResult<QuoteDto>> Apply(int id, QuoteAction action)
     {
-        var quote = await _service.ApplyActionAsync(id, action);
+        var quote = await _service.ApplyActionAsync(id, action, User.Identity?.Name);
         if (quote == null)
         {
             return NotFound(new { error = "Quote Not found." });

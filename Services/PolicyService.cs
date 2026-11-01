@@ -56,7 +56,7 @@ public class PolicyService : IPolicyService
         return policy == null ? null : ToDto(policy);
     }
 
-    public async Task<Policy> CreateFromQuoteAsync(Quote quote)
+    public async Task<Policy> CreateFromQuoteAsync(Quote quote, string? performedBy = null)
     {
         if (quote.Premium == null)
         {
@@ -82,11 +82,18 @@ public class PolicyService : IPolicyService
         };
 
         _context.Policies.Add(policy);
+        _context.PolicyTransactions.Add(new PolicyTransaction
+        {
+            Policy = policy,
+            Type = PolicyTransactionType.Issued,
+            PerformedBy = performedBy
+        });
+
         _logger.LogInformation("Policy {PolicyNumber} created from quote {QuoteId}", policy.PolicyNumber, quote.Id);
         return policy;
     }
 
-    public async Task<PolicyDto?> RenewAsync(int id)
+    public async Task<PolicyDto?> RenewAsync(int id, string? performedBy = null)
     {
         var old = await _context.Policies
             .Include(p => p.Product)
@@ -126,13 +133,19 @@ public class PolicyService : IPolicyService
         };
 
         _context.Policies.Add(renewal);
+        _context.PolicyTransactions.Add(new PolicyTransaction
+        {
+            Policy = renewal,
+            Type = PolicyTransactionType.Renewed,
+            PerformedBy = performedBy
+        });
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("Policy {Old} renewed as {New}", old.PolicyNumber, renewal.PolicyNumber);
         return ToDto(renewal);
     }
 
-    public async Task<PolicyDto?> CancelAsync(int id)
+    public async Task<PolicyDto?> CancelAsync(int id, string? performedBy = null)
     {
         var policy = await _context.Policies
             .Include(p => p.Product)
@@ -148,6 +161,12 @@ public class PolicyService : IPolicyService
         policy.Status = PolicyStatus.Cancelled;
         policy.CancelledAt = DateTime.UtcNow;
         policy.UpdatedAt = DateTime.UtcNow;
+        _context.PolicyTransactions.Add(new PolicyTransaction
+        {
+            PolicyId = policy.Id,
+            Type = PolicyTransactionType.Cancelled,
+            PerformedBy = performedBy
+        });
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("Policy {PolicyNumber} cancelled", policy.PolicyNumber);

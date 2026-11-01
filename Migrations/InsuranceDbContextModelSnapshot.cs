@@ -215,6 +215,36 @@ namespace InsuranceApi.Migrations
                     b.ToTable("Policies");
                 });
 
+            modelBuilder.Entity("InsuranceApi.Models.PolicyTransaction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("OccuredAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PerformedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("PolicyId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PolicyId");
+
+                    b.ToTable("PolicyTransactions");
+                });
+
             modelBuilder.Entity("InsuranceApi.Models.Product", b =>
                 {
                     b.Property<int>("Id")
@@ -592,6 +622,17 @@ namespace InsuranceApi.Migrations
                     b.Navigation("Product");
 
                     b.Navigation("Quote");
+                });
+
+            modelBuilder.Entity("InsuranceApi.Models.PolicyTransaction", b =>
+                {
+                    b.HasOne("InsuranceApi.Models.Policy", "Policy")
+                        .WithMany()
+                        .HasForeignKey("PolicyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Policy");
                 });
 
             modelBuilder.Entity("InsuranceApi.Models.Product", b =>

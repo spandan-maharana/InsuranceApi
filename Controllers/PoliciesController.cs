@@ -52,7 +52,7 @@ public class PoliciesController : ControllerBase
     [Authorize(Roles = "Agent")]
     public async Task<IActionResult> Renew(int id)
     {
-        var policy = await _policyService.RenewAsync(id);
+        var policy = await _policyService.RenewAsync(id, User.Identity?.Name);
         if (policy == null)
         {
             return NotFound(new { error = "Policy not found." });
@@ -64,7 +64,7 @@ public class PoliciesController : ControllerBase
     [Authorize(Roles = "Agent")]
     public async Task<IActionResult> Cancel(int id)
     {
-        var policy = await _policyService.CancelAsync(id);
+        var policy = await _policyService.CancelAsync(id, User.Identity?.Name);
         if (policy == null)
         {
             return NotFound(new { error = "Policy not found." });

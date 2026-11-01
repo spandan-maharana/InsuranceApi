@@ -174,3 +174,11 @@ export interface PolicyItem{
   cancelledAt: string | null;
   createdAt: string;
 }
+
+export interface PolicyEvent{
+  id: number;
+  policyId: number;
+  type: string;
+  occuredAt: string;
+  performedBy: string | null;
+}

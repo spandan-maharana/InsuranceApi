@@ -35,6 +35,17 @@ public class PoliciesController : ControllerBase
         return Ok(policy);
     }
 
+    [HttpGet("{id}/history")]
+    public async Task<IActionResult> GetHistory(int id)
+    {
+        var history = await _policyService.GetHistoryAsync(id);
+        if (history == null)
+        {
+            return NotFound(new { error = "Policy not found." });
+        }
+        return Ok(history);
+    }
+
     // NEW: the policy that was created from a quote
     [HttpGet("by-quote/{quoteId}")]
     public async Task<IActionResult> GetByQuote(int quoteId)

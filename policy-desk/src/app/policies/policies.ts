@@ -2,7 +2,7 @@ import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ApiService } from '../api.service';
 import { AuthService } from '../auth.service';
-import { PolicyItem } from '../models';
+import { PolicyEvent, PolicyItem } from '../models';
 
 type PolicyTab = 'Issued' | 'Cancelled';
 
@@ -48,6 +48,7 @@ export class Policies implements OnInit {
   busy = signal(false);
   actionError = signal('');
   notice = signal('');
+  history = signal<PolicyEvent[]>([]);
 
   // Only agents can renew or cancel (the backend enforces this too)
   canEdit = computed(() => this.auth.role() === 'Agent');
@@ -113,7 +114,14 @@ export class Policies implements OnInit {
     this.selectedId.set(id);
     this.confirmingCancel.set(false);
     this.actionError.set('');
+
+    this.history.set([]);
+    this.api.getPolicyHistory(id).subscribe({
+      next: (rows) => this.history.set(rows),
+      error: () => this.history.set([]),
+    });
   }
+  
 
   private pickFirst() {
     const first = this.visible()[0];

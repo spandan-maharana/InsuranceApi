@@ -11,4 +11,5 @@ public interface IPolicyService
     Task<Policy> CreateFromQuoteAsync(Quote quote, string? performedBy = null);
     Task<PolicyDto?> RenewAsync(int id, string? performedBy = null);
     Task<PolicyDto?> CancelAsync(int id, string? performedBy = null);
+    Task<List<PolicyTransactionDto>?> GetHistoryAsync(int policyId);
 }

@@ -6,6 +6,7 @@ import {
   Category,
   DashboardData,
   NewRequestCount,
+  PolicyEvent,
   PolicyItem,
   ProductDetail,
   QuoteItem,
@@ -142,6 +143,10 @@ getPolicies(): Observable<PolicyItem[]> {
   // Soft cancel: the row stays, its status changes
   cancelPolicy(id: number): Observable<PolicyItem> {
     return this.http.post<PolicyItem>(`${this.baseUrl}/api/policies/${id}/cancel`, {});
+  }
+
+  getPolicyHistory(id: number): Observable<PolicyEvent[]>{
+    return this.http.get<PolicyEvent[]>(`${this.baseUrl}/api/policies/${id}/history`);
   }
 }
 

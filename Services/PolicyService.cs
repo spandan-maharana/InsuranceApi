@@ -172,6 +172,25 @@ public class PolicyService : IPolicyService
         _logger.LogInformation("Policy {PolicyNumber} cancelled", policy.PolicyNumber);
         return ToDto(policy);
     }
+    public async Task<List<PolicyTransactionDto>?> GetHistoryAsync(int policyId)
+    {
+        var exists = await _context.Policies.AnyAsync(p => p.Id == policyId);
+        if (!exists) { return null; }
+
+        var rows = await _context.PolicyTransactions
+            .Where(t => t.PolicyId == policyId)
+            .OrderByDescending(t => t.OccuredAt)
+            .ToListAsync();
+
+        return rows.Select(t => new PolicyTransactionDto
+        {
+            Id = t.Id,
+            PolicyId = t.PolicyId,
+            Type = t.Type.ToString(),
+            OccuredAt = t.OccuredAt,
+            PerformedBy = t.PerformedBy
+        }).ToList();
+    }
 
     private static string BuildNumber(int segment, int term)
     {

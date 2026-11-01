@@ -21,3 +21,12 @@ public class PolicyDto
     public DateTime? CancelledAt { get; set; }
     public DateTime CreatedAt { get; set; }
 }
+
+public class PolicyTransactionDto
+{
+    public int Id { get; set; }
+    public int PolicyId { get; set; }
+    public string Type { get; set; } = "";
+    public DateTime OccuredAt { get; set; }
+    public string? PerformedBy { get; set; }
+}

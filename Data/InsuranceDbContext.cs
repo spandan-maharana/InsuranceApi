@@ -19,6 +19,7 @@ public class InsuranceDbContext : DbContext
     public DbSet<QuoteRequest> QuoteRequests => Set<QuoteRequest>();
     public DbSet<AppUser> Users => Set<AppUser>();
 
+    public DbSet<QuoteHistory> QuoteHistories => Set<QuoteHistory>();
     protected override void OnModelCreating(ModelBuilder modelBuilder) //This is a model validation step for the database, where the rule is 'no two customers can have the same email address'.
     {
         // Configure the Customer entity
@@ -184,6 +185,22 @@ public class InsuranceDbContext : DbContext
 
             // No two users can share a username
             entity.HasIndex(u => u.Username).IsUnique();
+        });
+
+        modelBuilder.Entity<QuoteHistory>(entity =>
+        {
+            entity.Property(h => h.Action).HasMaxLength(20);
+            entity.Property(h => h.FromStatus).HasConversion<string>().HasMaxLength(20);
+            entity.Property(h => h.ToStatus).HasConversion<string>().HasMaxLength(20);
+            entity.Property(h => h.PerformedBy).HasMaxLength(100);
+
+            entity.HasIndex(h => h.QuoteId);
+
+            // History must never disappear with the quote
+            entity.HasOne(h => h.Quote)
+                  .WithMany()
+                  .HasForeignKey(h => h.QuoteId)
+                  .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

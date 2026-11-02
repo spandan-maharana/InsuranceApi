@@ -134,6 +134,7 @@ public class QuoteService : IQuoteService
         }
 
         var newStatus = QuoteLifeCycle.Apply(action, quote.Status);
+        var oldStatus = quote.Status;
 
         if (action == QuoteAction.Quote)
         {
@@ -180,6 +181,15 @@ public class QuoteService : IQuoteService
 
         quote.Status = newStatus;
         quote.UpdatedAt = DateTime.UtcNow;
+
+        _context.QuoteHistories.Add(new QuoteHistory
+        {
+            QuoteId = quote.Id,
+            Action = action.ToString(),
+            FromStatus = oldStatus,
+            ToStatus = newStatus,
+            PerformedBy = performedBy
+        });
 
         // When the quote is Issued, the policy is created in the same save
         if (action == QuoteAction.Issue)

@@ -2,7 +2,7 @@ import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ApiService } from '../api.service';
 import { AuthService } from '../auth.service';
-import { QuoteItem, QuoteStatus } from '../models';
+import { QuoteEvent, QuoteItem, QuoteStatus } from '../models';
 import { messagesFrom, prettyKey } from '../utils';
 
 type UnderwritingTab = 'Approve' | 'Issue' | 'Issued';
@@ -34,6 +34,7 @@ export class Underwriting implements OnInit {
   confirmingDiscard = signal(false);
   actionError = signal('');
   notice = signal('');
+  history = signal<QuoteEvent[]>([]);
 
   // Only the Underwriter can act. The SuperUser can look.
   canAct = computed(() => this.auth.role() === 'Underwriter');
@@ -120,6 +121,12 @@ export class Underwriting implements OnInit {
     this.selectedId.set(id);
     this.confirmingDiscard.set(false);
     this.actionError.set('');
+
+    this.history.set([]);
+    this.api.getQuoteHistory(id).subscribe({
+      next: (rows) => this.history.set(rows),
+      error: () => this.history.set([]),
+    });
   }
 
   private pickFirst() {

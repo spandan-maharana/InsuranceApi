@@ -35,3 +35,14 @@ public class QuoteDto
     public DateTime CreatedAt { get; set; }
     public DateTime? ExpiresAt { get; set; } //Acceptable to null values
 }
+
+public class QuoteHistoryDto
+{
+    public int Id { get; set; }
+    public int QuoteId { get; set; }
+    public string Action { get; set; } = "";
+    public string FromStatus { get; set; } = "";
+    public string ToStatus { get; set; } = "";
+    public DateTime OccuredAt { get; set; }
+    public string? PerformedBy { get; set; }
+}

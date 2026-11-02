@@ -124,6 +124,22 @@
           <p class="muted">Not priced.</p>
         }
 
+        <h3>History</h3>
+        @if (history().length === 0) {
+          <p class="muted">No history recorded yet.</p>
+        } @else {
+          <ul class="history">
+            @for (e of history(); track e.id) {
+              <li>
+                <strong>{{ e.action }}</strong>
+                · {{ e.fromStatus }} → {{ e.toStatus }}
+                · {{ asUtc(e.occuredAt) | date: 'medium' }}
+                · by {{ e.performedBy || 'unknown' }}
+              </li>
+            }
+          </ul>
+        }
+
         @if (q.status === 'Accepted' || q.status === 'Bound') {
           <h3>Your decision</h3>
 

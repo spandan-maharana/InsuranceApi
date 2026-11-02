@@ -9,6 +9,7 @@ import {
   PolicyEvent,
   PolicyItem,
   ProductDetail,
+  QuoteEvent,
   QuoteItem,
   QuoteRequestItem,
   QuoteStatus,
@@ -128,6 +129,10 @@ export class ApiService {
     return this.http
       .post<QuoteItem>(`${this.baseUrl}/api/quotes/${id}/issue`, {})
       .pipe(map(tidy));
+  }
+
+  getQuoteHistory(id: number): Observable<QuoteEvent[]>{
+    return this.http.get<QuoteEvent[]>(`${this.baseUrl}/api/quotes/${id}/history`);
   }
 
   // ----- Policies -----

@@ -329,3 +329,14 @@ h3 {
     grid-template-columns: 110px 1fr;
   }
 }
+
+.history {
+  margin: 0;
+  padding-left: 10px;
+  font-size: 14px;
+  color: #1f2933;
+}
+
+.history li{
+  margin-bottom: 6px;
+}

@@ -95,4 +95,15 @@ public class QuotesController : ControllerBase
         }
         return Ok(quote);
     }
+
+    [HttpGet("{id}/history")]
+    public async Task<ActionResult<List<QuoteHistoryDto>>> GetHistory(int id)
+    {
+        var history = await _service.GetHistoryAsync(id);
+        if (history == null)
+        {
+            return NotFound(new { error = "Quote not found." });
+        }
+        return Ok(history);
+    }
 }

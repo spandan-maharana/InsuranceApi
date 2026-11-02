@@ -204,6 +204,31 @@ public class QuoteService : IQuoteService
         return ToDto(quote, await GetCustomerNameAsync(quote.CustomerId));
     }
 
+    public async Task<List<QuoteHistoryDto>?> GetHistoryAsync(int quoteId)
+    {
+        var exists = await _context.Quotes.AnyAsync(q => q.Id == quoteId);
+        if (!exists)
+        {
+            return null;
+        }
+        var rows = await _context.QuoteHistories
+            .Where(h => h.QuoteId == quoteId)
+            .OrderByDescending(h => h.OccuredAt)
+            .ToListAsync();
+
+        return rows.Select(h => new QuoteHistoryDto
+        {
+            Id = h.Id,
+            QuoteId = h.QuoteId,
+            Action = h.Action,
+            FromStatus = h.FromStatus.ToString(),
+            ToStatus = h.ToStatus.ToString(),
+            OccuredAt = h.OccuredAt,
+            PerformedBy = h.PerformedBy
+
+        }).ToList();
+    }
+
     private static bool ExpireIfNeeded(Quote quote)
     {
         var canExpire = quote.Status == QuoteStatus.Quoted || quote.Status == QuoteStatus.Accepted;

@@ -182,3 +182,13 @@ export interface PolicyEvent{
   occuredAt: string;
   performedBy: string | null;
 }
+
+export interface QuoteEvent{
+  id: number;
+  quoteId: number;
+  action: string;
+  fromStatus: string;
+  toStatus: string;
+  occuredAt: string;
+  performedBy: string | null;
+}

@@ -136,6 +136,15 @@ public class QuoteService : IQuoteService
         var newStatus = QuoteLifeCycle.Apply(action, quote.Status);
         var oldStatus = quote.Status;
 
+        if(action == QuoteAction.Bind || action == QuoteAction.Issue)
+        {
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            if(quote.RequestedEffectiveDate < today)
+            {
+                throw new BadRequestException("The start date has passed. Please create a new quote with a new start date.");
+            }
+        }
+
         if (action == QuoteAction.Quote)
         {
             var today = DateOnly.FromDateTime(DateTime.UtcNow);

@@ -8,6 +8,7 @@ namespace InsuranceApi.Services;
 public class PolicyService : IPolicyService
 {
     private const int FirstSegment = 1;
+    private const int RenewalGraceDays = 30;
 
     private readonly InsuranceDbContext _context;
     private readonly ILogger<PolicyService> _logger;
@@ -104,6 +105,13 @@ public class PolicyService : IPolicyService
         if (old.Status != PolicyStatus.Issued)
         {
             throw new ConflictException("Only an Issued policy can be renewed.");
+        }
+
+        //Policy expired a long time ago has lapsed and requires a new quote rather than a renewal.
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        if (today > old.ExpirationDate.AddDays(RenewalGraceDays))
+        {
+            throw new BadRequestException($"This policy has expired more than {RenewalGraceDays} days ago and can no longer be renewed. Please create a new quote.");
         }
 
         var nextTerm = old.Term + 1;
